@@ -1,0 +1,4 @@
+device: /dev/sda
+partition_number: 3
+vg: vg
+lv: root

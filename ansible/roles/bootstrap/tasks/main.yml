@@ -1,0 +1,122 @@
+- name: generate ansible ssh keypair
+  community.crypto.openssh_keypair:
+    path: "roles/bootstrap/files/ansible_ed25519"
+    comment: "ansible"
+    type: "ed25519"
+  delegate_to: localhost
+
+- name: create vm from template 
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    datacenter: '{{ vcenter_datacenter }}'
+    cluster: '{{ vcenter_cluster }}'
+    resource_pool: '{{ vcenter_resource_pool }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    template: '{{ vm_template }}'
+    disk:
+    - size_gb: 32
+      type: thin
+      autoselect_datastore: true
+    hardware:
+      memory_mb: 2048
+      num_cpus: 2
+  delegate_to: localhost
+
+- name: set vm network
+  community.vmware.vmware_guest_network:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    datacenter: '{{ vcenter_datacenter }}'
+    cluster: '{{ vcenter_cluster }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    network_name: '{{ vm_network }}'
+  delegate_to: localhost
+
+- name: set cloud-init metadata and userdata
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    cluster: '{{ vcenter_cluster }}'
+    datacenter: '{{ vcenter_datacenter }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    advanced_settings:
+      - key: "guestinfo.metadata"
+        value: '{{ vm_metadata | b64encode }}'
+      - key: "guestinfo.metadata.encoding"
+        value: "base64"
+      - key: "guestinfo.userdata"
+        value: '{{ vm_userdata | b64encode }}'
+      - key: "guestinfo.userdata.encoding"
+        value: "base64"
+  delegate_to: localhost
+
+- name: power-on and wait for ip address
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    cluster: '{{ vcenter_cluster }}'
+    datacenter: '{{ vcenter_datacenter }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    state: "powered-on"
+    wait_for_ip_address: true
+  delegate_to: localhost
+
+- name: gather facts
+  ansible.builtin.gather_facts:
+
+- name: install required packages
+  ansible.builtin.package:
+    name:
+      - git
+    state: present
+  become: true
+
+- name: clone this repo to ansible vm
+  ansible.builtin.git module:
+    repo: https://github.com/samchelini/homelab-automation.git
+    dest: "{{ ansible_env.HOME }}/"
+
+- name: copy ssh keypair to role files
+  ansible.builtin.copy:
+    src: "ansible_ed25519*"
+    dest: "{{ ansible_env.HOME }}/homelab-automation/ansible/roles/bootstrap/files/"
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: copy ssh keypair to ansible home directory
+  ansible.builtin.copy:
+    src: "ansible_ed25519*"
+    dest: "{{ ansible_env.HOME }}/.ssh/"
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: copy vault-password-file to role files
+  ansible.builtin.copy:
+    src: "vault-password-file"
+    dest: "{{ ansible_env.HOME }}/homelab-automation/ansible/roles/bootstrap/files/vault-password-file"
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: copy vault-password-file to ansible directory
+  ansible.builtin.copy:
+    src: "vault-password-file"
+    dest: "{{ ansible_env.HOME }}/homelab-automation/ansible/"
+    owner: ansible
+    group: ansible
+    mode: '0600'

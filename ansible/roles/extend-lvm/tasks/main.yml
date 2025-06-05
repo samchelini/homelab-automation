@@ -1,0 +1,31 @@
+- name: install parted
+  ansible.builtin.package:
+    name: parted
+    state: present
+  become: true
+
+- name: extend partition
+  community.general.parted:
+    device: '{{ device }}'
+    number: '{{ partition_number }}'
+    part_end: "100%"
+    resize: true
+    label: gpt
+    state: present
+  become: true
+
+- name: extend vg
+  community.general.lvg:
+    vg: '{{ vg }}'
+    pvs: '{{ device }}{{ partition_number }}'
+    pvresize: true
+  become: true
+
+- name: extend root lvm
+  community.general.lvol:
+    vg: '{{ vg }}'
+    lv: '{{ lv }}'
+    size: '+100%FREE'
+    resizefs: true
+    shrink: false
+  become: true

@@ -1,0 +1,15 @@
+#cloud-config
+manage_etc_hosts: true
+users:
+  - name: ansible
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    shell: /bin/bash
+    groups: sudo
+    lock_passwd: true
+    ssh_authorized_keys:
+      - {{ ansible_public_ssh_key }}
+  - name: sysadmin
+    shell: /bin/bash
+    groups: sudo
+    lock_passwd: false
+    passwd: {{ sysadmin_passwd | string | ansible.builtin.password_hash }}

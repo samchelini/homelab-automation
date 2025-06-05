@@ -1,0 +1,6 @@
+---
+- hosts: citadel
+  gather_facts: false
+  roles:
+    - bootstrap
+    - extend-lvm

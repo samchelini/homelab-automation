@@ -1,0 +1,16 @@
+#!/bin/bash
+
+PKR_VAR_vcenter_url="vcenter.example.com"
+PKR_VAR_vcenter_username="administrator@vsphere.local"
+
+PKR_VAR_vcenter_cluster="My Cluster"
+PKR_VAR_vcenter_host="Host-1"
+PKR_VAR_vcenter_datastore="Datastore-1"
+PKR_VAR_vm_network="My Network"
+PKR_VAR_vm_folder="My Template Folder"
+PKR_VAR_vm_disk_mb="16384"
+
+PKR_VAR_vm_ip="192.168.1.100"
+PKR_VAR_vm_netmask="255.255.255.0"
+PKR_VAR_vm_gateway="192.168.1.1"
+PKR_VAR_vm_dns="8.8.8.8 8.8.4.4"

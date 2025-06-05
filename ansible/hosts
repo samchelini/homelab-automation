@@ -1,0 +1,20 @@
+all:
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_user: ansible
+    ansible_ssh_private_key_file: "{{ inventory_dir }}/roles/bootstrap/files/ansible_ed25519"
+
+ungrouped:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ansible_playbook_python}}"
+    citadel:
+      ansible_host: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          39653264616130613466393463396566653637396662326631623130393330383732626362316165
+          6534323865383435343332616663653833326332323637320a386439316137663330646664666366
+          33666137356461323465373436373562656462636639313537373534616439613639396337323436
+          3038366132383038650a386165316434323230616234346462393166623137346431346232303761
+          3561
+      ansible_python_interpreter: /usr/bin/python3

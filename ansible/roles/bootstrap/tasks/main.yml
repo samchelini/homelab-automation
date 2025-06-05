@@ -85,25 +85,27 @@
   become: true
 
 - name: clone this repo to ansible vm
-  ansible.builtin.git module:
+  ansible.builtin.git:
     repo: https://github.com/samchelini/homelab-automation.git
-    dest: "{{ ansible_env.HOME }}/"
+    dest: "{{ ansible_env.HOME }}/homelab-automation"
 
 - name: copy ssh keypair to role files
   ansible.builtin.copy:
-    src: "ansible_ed25519*"
+    src: "{{ item }}"
     dest: "{{ ansible_env.HOME }}/homelab-automation/ansible/roles/bootstrap/files/"
     owner: ansible
     group: ansible
     mode: '0600'
+  with_fileglob: "*ed25519*"
 
 - name: copy ssh keypair to ansible home directory
   ansible.builtin.copy:
-    src: "ansible_ed25519*"
+    src: "{{ item }}"
     dest: "{{ ansible_env.HOME }}/.ssh/"
     owner: ansible
     group: ansible
     mode: '0600'
+  with_fileglob: "*ed25519*"
 
 - name: copy vault-password-file to role files
   ansible.builtin.copy:

@@ -25,6 +25,7 @@
       memory_mb: 2048
       num_cpus: 2
   delegate_to: localhost
+  register: vm_info
 
 - name: set vm network
   community.vmware.vmware_guest_network:
@@ -59,6 +60,9 @@
       - key: "guestinfo.userdata.encoding"
         value: "base64"
   delegate_to: localhost
+  when: >
+    "guestinfo.userdata" not in vm_info["instance"]["advanced_settings"] or
+    "guestinfo.metadata" not in vm_info["instance"]["advanced_settings"]
 
 - name: power-on and wait for ip address
   community.vmware.vmware_guest:
@@ -81,8 +85,29 @@
   ansible.builtin.package:
     name:
       - git
+      - python3-virtualenv
     state: present
   become: true
+
+- name: create ansible venv and install pip packages
+  ansible.builtin.pip:
+    virtualenv: "{{ ansible_env.HOME }}/homelab-automation/ansible/.venv"
+    name:
+      - pip
+      - ansible
+      - requests
+      - PyVmomi
+      - passlib
+    extra_args: --upgrade
+
+- name: source virtualenv and disable prompt
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    append_newline: true
+    prepend_newline: true
+    block: |
+      export VIRTUAL_ENV_DISABLE_PROMPT=1
+      source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
 
 - name: clone this repo to ansible vm
   ansible.builtin.git:

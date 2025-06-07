@@ -4,6 +4,14 @@
     state: present
   become: true
 
+- name: get partition info
+  community.general.parted:
+    device: '{{ device }}'
+    number: '{{ partition_number }}'
+    state: info
+  become: true
+  register: partition_info_before
+
 - name: extend partition
   community.general.parted:
     device: '{{ device }}'
@@ -13,6 +21,12 @@
     label: gpt
     state: present
   become: true
+  register: partition_info_after
+  changed_when: "before_size != after_size"
+  vars:
+    json_query: "partitions[?num==`{{ partition_number }}`].size"
+    before_size: "{{ partition_info_before | community.general.json_query(json_query) }}"
+    after_size: "{{ partition_info_after | community.general.json_query(json_query) }}"
 
 - name: extend vg
   community.general.lvg:

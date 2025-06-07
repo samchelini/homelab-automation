@@ -90,6 +90,7 @@
       - wget
       - curl
       - man-db
+      - jq
     state: present
   become: true
 

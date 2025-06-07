@@ -87,6 +87,7 @@
       - git
       - python3-virtualenv
       - vim
+      - wget
     state: present
   become: true
 

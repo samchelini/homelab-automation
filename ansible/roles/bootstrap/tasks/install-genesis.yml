@@ -1,0 +1,74 @@
+- name: install genesis
+  ansible.builtin.shell:
+    creates: "{{ ansible_env.HOME }}/.genesis/genesis"
+    cmd: curl -L https://github.com/genesis-community/genesis/releases/latest/download/genesis | perl
+
+- name: install spruce
+  ansible.builtin.get_url:
+    url: https://github.com/geofffranks/spruce/releases/latest/download/spruce-linux-amd64
+    dest: /usr/local/bin/spruce
+    mode: '755'
+    force: true
+  become: true
+
+- name: install safe
+  ansible.builtin.get_url:
+    url: https://github.com/egen/safe/releases/latest/download/safe-linux-amd64
+    dest: /usr/local/bin/safe
+    mode: '755'
+    force: true
+  become: true
+
+- name: install vault
+  block:
+    - name: vault | get hashicorp keyring
+      ansible.builtin.get_url:
+        url: https://apt.releases.hashicorp.com/gpg
+        dest: /usr/share/keyrings/hashicorp-archive-keyring.asc
+        force: true
+
+    - name: vault | add hashicorp repo
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        state: present
+
+    - name: vault | install
+      ansible.builtin.apt:
+        update_cache: true
+        name: vault
+        state: latest
+  become: true
+
+- name: install credhub-cli
+  block:
+    - name: credhub-cli | get latest release url
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/cloudfoundry/credhub-cli/releases/latest
+      register: credhub_release
+
+    - name: credhub-cli | install
+      ansible.builtin.unarchive:
+        src: "{{ credhub_release.json.assets | community.general.json_query(qry) }}"
+        remote_src: true
+        dest: /usr/local/bin
+        mode: '755'
+      vars:
+        qry: "[?starts_with(name, 'credhub-linux-amd64')].browser_download_url | [0]"
+      become: true
+
+- name: install bosh-cli
+  block:
+    - name: bosh-cli | get latest release url
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/cloudfoundry/bosh-cli/releases/latest
+      register: bosh_release
+
+    - name: bosh-cli | install
+      ansible.builtin.get_url:
+        url: "{{ bosh_release.json.assets | community.general.json_query(qry) }}"
+        dest: /usr/local/bin/bosh
+        mode: '755'
+        force: true
+      vars:
+        qry: "[?ends_with(name, 'linux-amd64')].browser_download_url | [0]"
+      become: true

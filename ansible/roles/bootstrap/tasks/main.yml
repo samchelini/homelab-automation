@@ -94,6 +94,8 @@
     state: present
   become: true
 
+- include_tasks: install-genesis.yml
+
 - name: clone this repo to ansible vm
   ansible.builtin.git:
     repo: https://github.com/samchelini/homelab-automation.git
@@ -102,6 +104,7 @@
 - name: create ansible venv and install pip packages
   ansible.builtin.pip:
     virtualenv: "{{ ansible_env.HOME }}/homelab-automation/ansible/.venv"
+    virtualenv_command: "virtualenv --prompt ansible-venv"
     name:
       - pip
       - ansible
@@ -117,7 +120,7 @@
     append_newline: true
     prepend_newline: true
     block: |
-      export VIRTUAL_ENV_DISABLE_PROMPT=1
+      export PATH=$PATH:{{ ansible_env.HOME }}/.genesis
       source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
       alias ls='ls -lah --color=auto'
 

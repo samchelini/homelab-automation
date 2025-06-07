@@ -121,6 +121,8 @@
     prepend_newline: true
     block: |
       export PATH=$PATH:{{ ansible_env.HOME }}/.genesis
+      export GIT_AUTHOR_NAME="Samuel Chelini"
+      export GIT_AUTHOR_EMAIL='samchelini@gmail.com'
       source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
       alias ls='ls -lah --color=auto'
 

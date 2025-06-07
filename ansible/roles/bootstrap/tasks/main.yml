@@ -86,6 +86,7 @@
     name:
       - git
       - python3-virtualenv
+      - vim
     state: present
   become: true
 
@@ -106,7 +107,7 @@
       - jmespath
     extra_args: --upgrade
 
-- name: source virtualenv and disable prompt
+- name: configure .bashrc
   ansible.builtin.blockinfile:
     path: "{{ ansible_env.HOME }}/.bashrc"
     append_newline: true
@@ -114,6 +115,19 @@
     block: |
       export VIRTUAL_ENV_DISABLE_PROMPT=1
       source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
+      alias ls='ls -lah --color=auto'
+
+- name: configure .vimrc
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.vimrc"
+    create: true
+    marker: "\" {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      set tabstop=2
+      set shiftwidth=2
+      set expandtab
+      set bg=dark
+      syntax on
 
 - name: copy ssh keypair to role files
   ansible.builtin.copy:

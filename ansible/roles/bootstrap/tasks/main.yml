@@ -89,6 +89,7 @@
       - vim
       - wget
       - curl
+      - man-db
     state: present
   become: true
 

@@ -1,3 +1,4 @@
 *vault-password-file
 *ed25519*
 .packer_vars
+.venv

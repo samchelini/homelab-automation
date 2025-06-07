@@ -89,6 +89,11 @@
     state: present
   become: true
 
+- name: clone this repo to ansible vm
+  ansible.builtin.git:
+    repo: https://github.com/samchelini/homelab-automation.git
+    dest: "{{ ansible_env.HOME }}/homelab-automation"
+
 - name: create ansible venv and install pip packages
   ansible.builtin.pip:
     virtualenv: "{{ ansible_env.HOME }}/homelab-automation/ansible/.venv"
@@ -98,6 +103,7 @@
       - requests
       - PyVmomi
       - passlib
+      - jmespath
     extra_args: --upgrade
 
 - name: source virtualenv and disable prompt
@@ -108,11 +114,6 @@
     block: |
       export VIRTUAL_ENV_DISABLE_PROMPT=1
       source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
-
-- name: clone this repo to ansible vm
-  ansible.builtin.git:
-    repo: https://github.com/samchelini/homelab-automation.git
-    dest: "{{ ansible_env.HOME }}/homelab-automation"
 
 - name: copy ssh keypair to role files
   ansible.builtin.copy:

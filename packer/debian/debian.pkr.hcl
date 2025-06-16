@@ -71,6 +71,7 @@ source "vsphere-iso" "debian" {
     network      = var.vm_network
     network_card = "vmxnet3"
   }
+  remove_network_adapter = true
   storage {
     disk_size             = var.vm_disk_mb
     disk_thin_provisioned = true

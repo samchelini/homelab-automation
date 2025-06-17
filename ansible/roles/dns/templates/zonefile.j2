@@ -1,0 +1,16 @@
+$ORIGIN .
+$TTL 3600	; 1 hour
+{{ item.value.name }}	IN SOA ns1.{{ internal_domain }}. {{ hostmaster_email }}. (
+  {{ template_run_date.strftime('%s') }} ; serial
+  3600  ; refresh (1 hour)
+  600 ; retry (10 minutes)
+  86400 ; expire (1 day)
+  600 ; minimum (10 minutes)
+)
+  NS	ns1.{{ internal_domain }}.
+  NS	ns2.{{ internal_domain }}.
+$ORIGIN {{ item.value.name }}.
+$TTL 300	; 5 minutes
+{% for record in item.value.records %}
+{{ record.name }} {{ record.type }} {{ record.data }}
+{% endfor %}

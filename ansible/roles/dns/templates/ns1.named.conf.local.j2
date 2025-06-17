@@ -1,0 +1,10 @@
+{% for zone in zones.values() %}
+zone "{{ zone.name }}" {
+  type master;
+  file "/var/lib/bind/db.{{ zone.name }}";
+  allow-transfer { {{ hostvars.ns2.ansible_host }}; };
+  also-notify { {{ hostvars.ns2.ansible_host }}; };
+};
+{% endfor %}
+
+include "/etc/bind/zones.rfc1918";

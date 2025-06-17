@@ -1,0 +1,87 @@
+- name: create vm from template 
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    datacenter: '{{ vcenter_datacenter }}'
+    cluster: '{{ vcenter_cluster }}'
+    resource_pool: '{{ vcenter_resource_pool | default(omit) }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    template: '{{ vm_template }}'
+    disk:
+    - size_gb: '{{ vm_disk_gb }}'
+      type: thin
+      autoselect_datastore: true
+    hardware:
+      memory_mb: '{{ vm_memory_mb }}'
+      num_cpus: '{{ vm_cpu_num }}'
+  delegate_to: localhost
+  register: vm_info
+
+#- name: set vm hardware
+#  community.vmware.vmware_guest:
+#    hostname: '{{ vcenter_hostname }}'
+#    username: '{{ vcenter_username }}'
+#    password: '{{ vcenter_password }}'
+#    validate_certs: false
+#    datacenter: '{{ vcenter_datacenter }}'
+#    cluster: '{{ vcenter_cluster }}'
+#    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+#    name: '{{ vm_name }}'
+#    hardware:
+#      memory_mb: '{{ vm_memory_mb }}'
+#      num_cpus: '{{ vm_cpu_num }}'
+#  delegate_to: localhost
+
+- name: set vm network
+  community.vmware.vmware_guest_network:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    datacenter: '{{ vcenter_datacenter }}'
+    cluster: '{{ vcenter_cluster }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    network_name: '{{ vm_network }}'
+  delegate_to: localhost
+
+- name: set cloud-init metadata and userdata
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    cluster: '{{ vcenter_cluster }}'
+    datacenter: '{{ vcenter_datacenter }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    advanced_settings:
+      - key: "guestinfo.metadata"
+        value: '{{ vm_metadata | b64encode }}'
+      - key: "guestinfo.metadata.encoding"
+        value: "base64"
+      - key: "guestinfo.userdata"
+        value: '{{ vm_userdata | b64encode }}'
+      - key: "guestinfo.userdata.encoding"
+        value: "base64"
+  delegate_to: localhost
+  when: >
+    "guestinfo.userdata" not in vm_info["instance"]["advanced_settings"] or
+    "guestinfo.metadata" not in vm_info["instance"]["advanced_settings"]
+
+- name: power-on and wait for ip address
+  community.vmware.vmware_guest:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: false
+    cluster: '{{ vcenter_cluster }}'
+    datacenter: '{{ vcenter_datacenter }}'
+    folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
+    name: '{{ vm_name }}'
+    state: "powered-on"
+    wait_for_ip_address: true
+  delegate_to: localhost

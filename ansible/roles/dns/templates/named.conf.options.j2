@@ -1,0 +1,9 @@
+options {
+  directory "/var/cache/bind";
+  allow-recursion { any; };
+  forwarders {
+{% for dns_server in forwarders %}
+    {{ dns_server }};
+{% endfor %}
+	};
+};

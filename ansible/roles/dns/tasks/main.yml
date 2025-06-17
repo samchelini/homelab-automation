@@ -1,0 +1,41 @@
+- name: install bind9
+  ansible.builtin.package:
+    name:
+      - bind9
+    state: present
+  become: true
+
+- name: install named.conf.options
+  ansible.builtin.template:
+    src: "named.conf.options.j2"
+    dest: /etc/bind/named.conf.options
+  become: true
+
+- name: install ns1 templates
+  block:
+    - name: ns1 | install named.conf.local
+      ansible.builtin.template:
+        src: "ns1.named.conf.local.j2"
+        dest: /etc/bind/named.conf.local
+    - name: ns1 | install zone files
+      ansible.builtin.template:
+        src: "zonefile.j2"
+        dest: "/var/lib/bind/db.{{ item.value.name }}"
+      loop: "{{ lookup('ansible.builtin.dict', zones) }}"
+  become: true
+  when: inventory_hostname == "ns1"
+
+
+- name: install ns2 named.conf.local from template
+  ansible.builtin.template:
+    src: "ns2.named.conf.local.j2"
+    dest: /etc/bind/named.conf.local
+  become: true
+  when: inventory_hostname == "ns2"
+
+- name: restart bind9
+  ansible.builtin.systemd_service:
+    name: bind9
+    state: restarted
+    enabled: true
+  become: true

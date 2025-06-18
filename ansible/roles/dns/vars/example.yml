@@ -1,0 +1,36 @@
+forwarders:
+  - 8.8.8.8
+  - 8.8.4.4
+
+internal_domain: internal.example.com
+hostmaster_email: hostmaster.example.com
+
+zones:
+  internal_zone:
+    name: internal.example.com
+    records:
+      - name: ns1
+        type: A
+        data: 192.168.1.5
+      - name: ns2
+        type: A
+        data: 192.168.1.6
+      - name: vcenter
+        type: A
+        data: 192.168.5.10
+
+  reverse_infra_zone:
+    name: 1.168.192.in-addr.arpa
+    records:
+      - name: 5
+        type: PTR
+        data: ns1.internal.example.com.
+      - name: 6
+        type: PTR
+        data: ns2.internal.example.com.
+  reverse_ops_zone:
+    name: 5.168.192.in-addr.arpa
+    records:
+      - name: 10
+        type: PTR
+        data: vcenter.internal.example.com.

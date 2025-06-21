@@ -1,0 +1,64 @@
+- name: generate acme account key
+  community.crypto.openssl_privatekey:
+    path: '{{ key_dir + "/account.key" }}'
+    owner: '{{ key_owner }}'
+    group: '{{ key_group }}'
+  become: true
+
+- name: generate private key
+  community.crypto.openssl_privatekey:
+    path: '{{ key_dir + "/" + common_name + ".key" }}'
+    owner: '{{ key_owner }}'
+    group: '{{ key_group }}'
+  become: true
+
+- name: generate csr
+  community.crypto.openssl_csr:
+    path: '{{ key_dir + "/" + common_name + ".csr" }}'
+    privatekey_path: '{{ key_dir + "/" + common_name + ".key" }}'
+    common_name: '{{ common_name }}'
+    owner: '{{ key_owner }}'
+    group: '{{ key_group }}'
+  become: true
+
+- name: create a challenge
+  community.crypto.acme_certificate:
+    account_key_src: '{{ key_dir + "/account.key" }}'
+    src: '{{ key_dir + "/" + common_name + ".csr" }}'
+    fullchain_dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    challenge: dns-01
+    acme_version: 2
+    acme_directory: https://acme-v02.api.letsencrypt.org/directory
+    terms_agreed: true
+    remaining_days: 60
+  register: acme_challenge  
+  become: true
+
+- name: create dns record
+  sdorra.porkbun.porkbun_record:
+    state: present
+    domain: '{{ porkbun_domain }}'
+    record_type: TXT
+    name: '{{ acme_challenge["challenge_data"][common_name]["dns-01"]["record"].split("." + porkbun_domain).0 }}'
+    content: '{{ acme_challenge["challenge_data"][common_name]["dns-01"]["resource_value"] }}'
+    api_key: '{{ porkbun_api_key }}'
+    secret_api_key: '{{ porkbun_secret_key }}'
+  when: acme_challenge is changed
+
+- name: pause 60 seconds for dns updates
+  ansible.builtin.pause:
+    seconds: 60
+  when: acme_challenge is changed
+
+- name: validate challenge and retrieve certificate
+  community.crypto.acme_certificate:
+    account_key_src: '{{ key_dir + "/account.key" }}'
+    src: '{{ key_dir + "/" + common_name + ".csr" }}'
+    fullchain_dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    challenge: dns-01
+    acme_version: 2
+    acme_directory: https://acme-v02.api.letsencrypt.org/directory
+    remaining_days: 60
+    data: "{{ acme_challenge }}"
+  when: acme_challenge is changed
+  become: true

@@ -27,6 +27,10 @@
   roles:
     - authelia
   vars:
+    common_name: '{{ "authelia." + authelia_domain }}'
+    key_dir: /etc/authelia
+    key_owner: authelia
+    key_group: authelia
     authelia_domain: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           61636432666630366462353735666461343438323233646432303264383036313063316233326665

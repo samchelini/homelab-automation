@@ -17,10 +17,21 @@
     state: present
   become: true
 
+- name: enable authelia service
+  ansible.builtin.systemd_service:
+    name: authelia
+    enabled: true
+  become: true
+
+- name: import letsencrypt role
+  ansible.builtin.import_role:
+    name: letsencrypt
+
 - name: install configuration template
   ansible.builtin.template:
     src: "configuration.yml.j2"
     dest: /etc/authelia/configuration.yml
+  register: config_template
   become: true
 
 - name: install user database template
@@ -30,4 +41,12 @@
     mode: "600"
     owner: authelia
     group: authelia
+  register: users_template
+  become: true
+
+- name: restart authelia
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: authelia
+  when: config_template is changed or users_template is changed
   become: true

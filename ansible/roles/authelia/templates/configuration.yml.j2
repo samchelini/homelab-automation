@@ -50,12 +50,12 @@ server:
   # disable_healthcheck: false
 
   ## Authelia by default doesn't accept TLS communication on the server port. This section overrides this behaviour.
-  # tls:
+  tls:
     ## The path to the DER base64/PEM format private key.
-    # key: ''
+    key: '{{ key_dir + "/" + common_name + ".key" }}'
 
     ## The path to the DER base64/PEM format public certificate.
-    # certificate: ''
+    certificate: '{{ key_dir + "/" + common_name + ".crt" }}'
 
     ## The list of certificates for client authentication.
     # client_certificates: []

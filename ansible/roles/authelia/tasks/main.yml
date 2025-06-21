@@ -1,0 +1,33 @@
+- name: add authelia repository
+  block:
+    - name: authelia | add apt key
+      ansible.builtin.get_url:
+        url: https://apt.authelia.com/organization/signing.asc
+        dest: /usr/share/keyrings/authelia.asc
+    - name: authelia | add repo
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/authelia.asc] https://apt.authelia.com/stable/debian/debian all main"
+        state: present
+  become: true
+
+- name: install authelia
+  ansible.builtin.package:
+    name:
+      - authelia
+    state: present
+  become: true
+
+- name: install configuration template
+  ansible.builtin.template:
+    src: "configuration.yml.j2"
+    dest: /etc/authelia/configuration.yml
+  become: true
+
+- name: install user database template
+  ansible.builtin.template:
+    src: "users_database.yml.j2"
+    dest: /etc/authelia/users_database.yml
+    mode: "600"
+    owner: authelia
+    group: authelia
+  become: true

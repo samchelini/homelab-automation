@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://www.authelia.com/schemas/latest/json-schema/user-database.json
+users:
+  {{ admin_username }}:
+    disabled: false
+    displayname: '{{ admin_username }}'
+    password: '{{ admin_password | string | ansible.builtin.password_hash(hashtype="bcrypt", rounds=12, salt=admin_password_salt) }}'
+    email: '{{ admin_username }}@{{ authelia_domain }}'
+    groups:
+      - 'admins'

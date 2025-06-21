@@ -42,5 +42,6 @@ debian:
     dns:
   hosts:
     citadel:
+    authelia:
   vars:
     ansible_python_interpreter: /usr/bin/python3

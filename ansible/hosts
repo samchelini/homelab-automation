@@ -37,9 +37,14 @@ dns:
           6333366433313561610a376130343463386534663264393831313131336130623635346365313738
           3336
 
+ldap:
+  hosts:
+    ds1:
+
 debian:
   children:
     dns:
+    ldap:
   hosts:
     citadel:
     authelia:

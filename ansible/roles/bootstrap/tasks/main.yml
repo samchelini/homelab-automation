@@ -101,6 +101,12 @@
     repo: https://github.com/samchelini/homelab-automation.git
     dest: "{{ ansible_env.HOME }}/homelab-automation"
 
+- name: configure path
+  ansible.builtin.lineinfile:
+    insertbefore: BOF
+    line: export PATH=$PATH:{{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin
+    path: "{{ ansible_env.HOME }}/.bashrc"
+
 - name: create ansible venv and install pip packages
   ansible.builtin.pip:
     virtualenv: "{{ ansible_env.HOME }}/homelab-automation/ansible/.venv"
@@ -109,7 +115,7 @@
       - pip
       - ansible
       - requests
-      - PyVmomi
+      - PyVmomi<9.0
       - passlib
       - jmespath
     extra_args: --upgrade
@@ -171,3 +177,13 @@
     owner: ansible
     group: ansible
     mode: '0600'
+
+- name: install sdorra.porkbun collection
+  community.general.ansible_galaxy_install:
+    type: collection
+    name: sdorra.porkbun
+
+- name: install lvps.389ds_server role
+  community.general.ansible_galaxy_install:
+    type: role
+    name: lvps.389ds_server

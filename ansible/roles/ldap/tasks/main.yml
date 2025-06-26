@@ -1,0 +1,112 @@
+- name: install openldap and utilities
+  ansible.builtin.apt:
+    name: 
+      - slapd
+      - ldap-utils
+      - debconf-utils
+      - python3-ldap
+    state: present
+  become: true
+
+- name: confiure openldap
+  block:
+  - name: openldap | set domain
+    ansible.builtin.debconf:
+      name: slapd
+      question: slapd/domain
+      value: '{{ domain_name }}'
+      vtype: string
+    become: true
+    register: slapd_config
+
+  - name: openldap | set org
+    ansible.builtin.debconf:
+      name: slapd
+      question: shared/organization
+      value: '{{ organization }}'
+      vtype: string
+    become: true
+    register: slapd_config
+
+- name: reconfigure openldap
+  ansible.builtin.command:
+    cmd: "dpkg-reconfigure slapd"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  become: true
+  when: slapd_config is changed
+
+- name: check if admin exists
+  community.general.ldap_search:
+    dn: "olcDatabase={1}mdb,cn=config"
+    attrs:
+      - "olcRootDN"
+      - "olcRootPW"
+  become: true
+  register: admin_attrs
+
+- name: remove olcRootDN
+  community.general.ldap_attrs:
+    dn: olcDatabase={1}mdb,cn=config
+    attributes:
+      olcRootDN: "{{ admin_attrs.results.0.olcRootDN }}"
+    state: absent
+  become: true
+  when: "'olcRootDN' in admin_attrs.results.0"
+
+- name: remove olcRootPW
+  community.general.ldap_attrs:
+    dn: olcDatabase={1}mdb,cn=config
+    attributes:
+      olcRootPW: "{{ admin_attrs.results.0.olcRootPW }}"
+    state: absent
+  become: true
+  when: "'olcRootPW' in admin_attrs.results.0"
+
+- name: setup acls
+  community.general.ldap_attrs:
+    dn: olcDatabase={1}mdb,cn=config
+    attributes:
+      olcAccess:
+        - >-
+          {0}to attrs=userPassword
+          by self write by anonymous auth
+          by * none
+        - >-
+          {1}to attrs=shadowLastChange
+          by self write
+        - >-
+          {2}to *
+          by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage
+          by dn=cn=sysadmin,ou=users,{{ dc }} manage
+          by dn=cn=readonly,ou=users,{{ dc }} read
+    state: exact
+  become: true
+
+- name: create users ou
+  community.general.ldap_entry:
+    dn: ou=users,{{ dc }}
+    objectClass: organizationalUnit
+  become: true
+
+- name: create readonly user
+  community.general.ldap_entry:
+    dn: cn=readonly,ou=users,{{ dc }}
+    objectClass:
+      - simpleSecurityObject
+      - organizationalRole
+    attributes:
+      description: readonly user
+      userPassword: "{SSHA}85DcSf+o3K7gLAiT0slGsF2BZXE0BNvg"
+  become: true
+
+- name: create admin user
+  community.general.ldap_entry:
+    dn: cn=sysadmin,ou=users,{{ dc }}
+    objectClass:
+      - simpleSecurityObject
+      - organizationalRole
+    attributes:
+      description: admin user
+      userPassword: "{SSHA}M3044THc2hT0wq8d+UwiSNqU7u29wCU3"
+  become: true

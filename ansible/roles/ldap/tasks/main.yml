@@ -1,4 +1,4 @@
-- name: install openldap and utilities
+- name: install slapd and utilities
   ansible.builtin.apt:
     name: 
       - slapd

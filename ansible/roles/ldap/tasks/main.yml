@@ -8,9 +8,9 @@
     state: present
   become: true
 
-- name: confiure openldap
+- name: preseed slapd
   block:
-  - name: openldap | set domain
+  - name: slapd | set domain
     ansible.builtin.debconf:
       name: slapd
       question: slapd/domain
@@ -19,7 +19,7 @@
     become: true
     register: slapd_config
 
-  - name: openldap | set org
+  - name: slapd | set org
     ansible.builtin.debconf:
       name: slapd
       question: shared/organization
@@ -28,7 +28,7 @@
     become: true
     register: slapd_config
 
-- name: reconfigure openldap
+- name: reconfigure slapd
   ansible.builtin.command:
     cmd: "dpkg-reconfigure slapd"
   environment:
@@ -70,7 +70,8 @@
       olcAccess:
         - >-
           {0}to attrs=userPassword
-          by self write by anonymous auth
+          by self write 
+          by anonymous auth
           by * none
         - >-
           {1}to attrs=shadowLastChange

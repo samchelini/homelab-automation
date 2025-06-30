@@ -25,7 +25,9 @@
   community.crypto.acme_certificate:
     account_key_src: '{{ key_dir + "/account.key" }}'
     src: '{{ key_dir + "/" + common_name + ".csr" }}'
-    fullchain_dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    chain_dest: '{{ key_dir + "/" + common_name + "_chain.crt" }}'
+    fullchain_dest: '{{ key_dir + "/" + common_name + "_fullchain.crt" }}'
     challenge: dns-01
     acme_version: 2
     acme_directory: https://acme-v02.api.letsencrypt.org/directory
@@ -54,7 +56,9 @@
   community.crypto.acme_certificate:
     account_key_src: '{{ key_dir + "/account.key" }}'
     src: '{{ key_dir + "/" + common_name + ".csr" }}'
-    fullchain_dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    dest: '{{ key_dir + "/" + common_name + ".crt" }}'
+    chain_dest: '{{ key_dir + "/" + common_name + "_chain.crt" }}'
+    fullchain_dest: '{{ key_dir + "/" + common_name + "_fullchain.crt" }}'
     challenge: dns-01
     acme_version: 2
     acme_directory: https://acme-v02.api.letsencrypt.org/directory

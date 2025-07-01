@@ -1,16 +1,13 @@
-- name: install slapd and utilities
+- name: install debconf utils
   ansible.builtin.apt:
     name: 
-      - slapd
-      - ldap-utils
       - debconf-utils
-      - python3-ldap
     state: present
   become: true
 
 - name: preseed slapd
   block:
-  - name: slapd | set domain
+  - name: preseed slapd | set domain
     ansible.builtin.debconf:
       name: slapd
       question: slapd/domain
@@ -19,7 +16,7 @@
     become: true
     register: slapd_config
 
-  - name: slapd | set org
+  - name: preseed slapd | set org
     ansible.builtin.debconf:
       name: slapd
       question: shared/organization
@@ -28,6 +25,15 @@
     become: true
     register: slapd_config
 
+- name: install slapd and utilities
+  ansible.builtin.apt:
+    name: 
+      - slapd
+      - ldap-utils
+      - python3-ldap
+    state: present
+  become: true
+
 - name: reconfigure slapd
   ansible.builtin.command:
     cmd: "dpkg-reconfigure slapd"
@@ -35,6 +41,36 @@
     DEBIAN_FRONTEND: noninteractive
   become: true
   when: slapd_config is changed
+
+- name: import letsencrypt role
+  ansible.builtin.import_role:
+    name: letsencrypt
+
+- name: configure tls
+  community.general.ldap_attrs:
+    dn: cn=config
+    attributes:
+      olcTLSCertificateFile: "/etc/ldap/ldap.{{ domain_name }}.crt"
+      olcTLSCertificateKeyFile:  "/etc/ldap/ldap.{{ domain_name }}.key"
+      olcTLSCACertificateFile: "/etc/ldap/ldap.{{ domain_name }}_chain.crt" 
+    state: exact
+  become: true
+  register: tls_attrs
+
+- name: enable ldaps and disable ldap
+  ansible.builtin.lineinfile:
+    path: /etc/default/slapd
+    regexp: '^SLAPD_SERVICES=.*'
+    line: 'SLAPD_SERVICES="ldapi:/// ldaps:///"'
+  become: true
+  register: slapd_config
+
+- name: restart slapd
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: slapd
+  become: true
+  when: slapd_config is changed or tls_attrs is changed
 
 - name: check if admin exists
   community.general.ldap_search:

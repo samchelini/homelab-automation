@@ -27,6 +27,10 @@
   roles:
     - ldap 
   vars:
+    common_name: '{{ "ldap." + domain_name }}'
+    key_dir: /etc/ldap
+    key_owner: openldap
+    key_group: openldap
     domain_name: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           64663430323464343361623433333166343731663538333538313034313862333733386463306232

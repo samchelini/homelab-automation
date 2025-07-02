@@ -147,3 +147,7 @@
       description: admin user
       userPassword: "{SSHA}M3044THc2hT0wq8d+UwiSNqU7u29wCU3"
   become: true
+
+- name: install and configure phpldapadmin
+  ansible.builtin.include_tasks:
+    file: phpldapadmin.yml

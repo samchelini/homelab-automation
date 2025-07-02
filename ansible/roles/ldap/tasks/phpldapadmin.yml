@@ -1,0 +1,72 @@
+- name: install phpldapadmin
+  ansible.builtin.apt:
+    name: 
+      - phpldapadmin
+    state: present
+  become: true
+
+- name: copy ldap tls cert to phpldapadmin directory
+  ansible.builtin.copy:
+    remote_src: true
+    src: "/etc/ldap/ldap.{{ domain_name }}_fullchain.crt"
+    dest: "/etc/phpldapadmin/ldap.{{ domain_name }}_fullchain.crt"
+    mode: "644"
+    owner: root
+    group: www-data
+  become: true
+  register: tls_cert
+
+- name: copy ldap tls key to phpldapadmin directory
+  ansible.builtin.copy:
+    remote_src: true
+    src: "/etc/ldap/ldap.{{ domain_name }}.key"
+    dest: "/etc/phpldapadmin/ldap.{{ domain_name }}.key"
+    mode: "600"
+    owner: root
+    group: www-data
+  become: true
+  register: tls_key
+
+- name: check if ssl module is enabled
+  ansible.builtin.stat:
+    path: /etc/apache2/mods-enabled/ssl.load
+  register: mod_ssl
+
+- name: enable apache2 ssl module
+  community.general.apache2_module:
+    name: ssl
+    state: present
+    ignore_configcheck: true
+  become: true
+  when: not mod_ssl.stat.exists
+
+- name: install apache.conf
+  ansible.builtin.template:
+    src: "apache.conf.j2"
+    dest: /etc/phpldapadmin/apache.conf
+    owner: root
+    group: root
+    mode: '644'
+  become: true
+  register: apache_conf
+
+- name: install config.php
+  ansible.builtin.template:
+    src: "config.php.j2"
+    dest: /etc/phpldapadmin/config.php
+    owner: root
+    group: www-data
+    mode: '640'
+  become: true
+  register: config_php
+
+- name: restart apache2
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: apache2
+  become: true
+  when: >
+    tls_cert is changed or 
+    tls_key is changed or
+    apache_conf is changed or
+    config_php is changed

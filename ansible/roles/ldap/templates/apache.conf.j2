@@ -1,3 +1,10 @@
+# redirect http to https
+<VirtualHost *:80>
+    ServerName ldap.{{ domain_name }}
+    Redirect "/" "https://ldap.{{ domain_name }}/"
+</VirtualHost>
+
+# phpldapadmin
 <VirtualHost *:443>
     ServerName ldap.{{ domain_name }}
     DocumentRoot /usr/share/phpldapadmin/htdocs

@@ -115,7 +115,7 @@
         - >-
           {2}to *
           by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage
-          by dn=cn=sysadmin,ou=users,{{ dc }} manage
+          by group.exact=cn=ops,ou=groups,{{ dc }} manage
           by dn=cn=readonly,ou=users,{{ dc }} read
     state: exact
   become: true
@@ -137,15 +137,34 @@
       userPassword: "{SSHA}85DcSf+o3K7gLAiT0slGsF2BZXE0BNvg"
   become: true
 
-- name: create admin user
+- name: create sysadmin user
   community.general.ldap_entry:
-    dn: cn=sysadmin,ou=users,{{ dc }}
+    dn: uid=sysadmin,ou=users,{{ dc }}
     objectClass:
-      - simpleSecurityObject
-      - organizationalRole
+      - iNetOrgPerson
     attributes:
-      description: admin user
+      description: system administrator
+      cn: system
+      sn: administrator
+      o: homelab
+      mail: "sysadmin@{{ domain_name }}"
       userPassword: "{SSHA}M3044THc2hT0wq8d+UwiSNqU7u29wCU3"
+  become: true
+
+- name: create groups ou
+  community.general.ldap_entry:
+    dn: ou=groups,{{ dc }}
+    objectClass: organizationalUnit
+    attributes:
+      member: uid=sysadmin,ou=users,{{ dc }}
+  become: true
+
+- name: create ops group
+  community.general.ldap_entry:
+    dn: cn=ops,ou=groups,{{ dc }}
+    objectClass: groupOfNames
+    attributes:
+      member: uid=sysadmin,ou=users,{{ dc }}
   become: true
 
 - name: install and configure phpldapadmin

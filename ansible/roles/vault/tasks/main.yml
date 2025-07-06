@@ -1,0 +1,86 @@
+- name: install vault
+  block:
+    - name: vault | get hashicorp keyring
+      ansible.builtin.get_url:
+        url: https://apt.releases.hashicorp.com/gpg
+        dest: /usr/share/keyrings/hashicorp-archive-keyring.asc
+        force: true
+
+    - name: vault | add hashicorp repo
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        state: present
+
+    - name: vault | install
+      ansible.builtin.apt:
+        update_cache: true
+        name: vault
+        state: latest
+
+    - name: vault | start and enable
+      ansible.builtin.systemd_service:
+        name: vault
+        state: started
+        enabled: true
+  become: true
+
+- name: import letsencrypt role
+  ansible.builtin.import_role:
+    name: letsencrypt
+
+- name: install configuration template
+  ansible.builtin.template:
+    src: "vault.hcl.j2"
+    dest: /etc/vault.d/vault.hcl
+  register: config_template
+  become: true
+
+- name: restart vault
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: vault
+  when: config_template is changed
+  become: true
+
+- name: get vault status
+  ansible.builtin.command: vault status
+  register: vault_status
+  changed_when: false
+  failed_when: vault_status.rc != 2 and vault_status.rc != 0
+
+- name: initialize vault
+  block:
+    - name: initialize vault | vault operator init
+      ansible.builtin.command: vault operator init
+      register: vault_init
+
+    - name: initialize vault | save keys
+      ansible.builtin.copy:
+        content: '{{ vault_init.stdout | from_json }}'
+        dest: '{{ role_path }}/files/vault-keys.json'
+        owner: ansible
+        group: ansible
+        mode: "600"
+      delegate_to: localhost
+  when: not vault_status.stdout | from_json | json_query("initialized")
+
+- name: get vault status
+  ansible.builtin.command: vault status
+  register: vault_status
+  changed_when: false
+  failed_when: vault_status.rc != 2 and vault_status.rc != 0
+
+- name: unseal vault
+  block:
+    - name: unseal vault | get keys and unseal
+      ansible.builtin.command: vault operator unseal {{ item }}
+      with_items: "{{ [0,1,2] | map('extract', lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('unseal_keys_hex')) | list }}"
+      no_log: true
+
+    - name: unseal vault | check sealed status
+      ansible.builtin.command: vault status
+      register: vault_status
+      failed_when: >
+        vault_status.rc != 0 or
+        vault_status.stdout | from_json | json_query("sealed")
+  when: vault_status.stdout | from_json | json_query("sealed")

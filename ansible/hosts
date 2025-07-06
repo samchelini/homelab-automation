@@ -48,5 +48,6 @@ debian:
   hosts:
     citadel:
     authelia:
+    vault:
   vars:
     ansible_python_interpreter: /usr/bin/python3

@@ -2,3 +2,4 @@
 *ed25519*
 .packer_vars
 .venv
+vault-keys.json

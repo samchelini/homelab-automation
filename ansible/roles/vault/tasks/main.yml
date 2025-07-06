@@ -84,3 +84,16 @@
         vault_status.rc != 0 or
         vault_status.stdout | from_json | json_query("sealed")
   when: vault_status.stdout | from_json | json_query("sealed")
+
+- name: ldap
+  block:
+    - name: ldap | get vault auth list
+      ansible.builtin.command: vault auth list
+      changed_when: false
+      register: vault_auth
+
+    - name: ldap | enable
+      ansible.builtin.command: vault auth enable ldap
+      when: '"ldap/" not in vault_auth.stdout | from_json | list'
+  environment:
+    VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"

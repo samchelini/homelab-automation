@@ -113,6 +113,7 @@
           userattr: mail
           userfilter: (&(objectClass=inetOrgPerson)(mail={{ '{{' }}.Username{{ '}}' }}))
           groupdn: ou=groups,{{ dc }}
+      when: '"ldap/" not in vault_auth.stdout | from_json | list'
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"
 

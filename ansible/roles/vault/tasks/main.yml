@@ -115,3 +115,16 @@
           groupdn: ou=groups,{{ dc }}
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"
+
+- name: secrets
+  block:
+    - name: secrets | get secret engines
+      ansible.builtin.command: vault secrets list
+      changed_when: false
+      register: vault_secrets
+
+    - name: secrets | enable
+      ansible.builtin.command: vault secrets enable -path=secrets -version=2 kv
+      when: '"secrets/" not in vault_secrets.stdout | from_json | list'
+  environment:
+    VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"

@@ -24,6 +24,12 @@
         enabled: true
   become: true
 
+- name: install python3-hvac
+  ansible.builtin.apt:
+    name: python3-hvac
+    state: latest
+  become: true
+
 - name: import letsencrypt role
   ansible.builtin.import_role:
     name: letsencrypt
@@ -95,5 +101,17 @@
     - name: ldap | enable
       ansible.builtin.command: vault auth enable ldap
       when: '"ldap/" not in vault_auth.stdout | from_json | list'
+
+    - name: ldap | configure
+      community.hashi_vault.vault_write:
+        path: auth/ldap/config
+        data:
+          url: ldaps://ldap.{{ domain_name }}
+          binddn: cn=readonly,ou=Users,{{ dc }}
+          bindpass: "{{ readonly_password }}"
+          userdn: ou=users,{{ dc }}
+          userattr: mail
+          userfilter: (&(objectClass=inetOrgPerson)(mail={{ '{{' }}.Username{{ '}}' }}))
+          groupdn: ou=groups,{{ dc }}
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"

@@ -129,3 +129,35 @@
       when: '"secrets/" not in vault_secrets.stdout | from_json | list'
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"
+
+- name: policy
+  block:
+    - name: policy | get policies
+      community.hashi_vault.vault_read:
+        path: sys/policy
+      register: vault_policies
+
+    - name: policy | copy ops policy
+      ansible.builtin.copy:
+        src: vault-policy-ops.hcl
+        dest: /opt/vault/policies/
+        owner: vault
+        group: vault
+      register: ops_policy
+      become: true
+
+    - name: policy | create ops policy
+      ansible.builtin.command: vault policy write ops /opt/vault/policies/vault-policy-ops.hcl
+      when: '"ops" not in vault_policies.data.policies'
+
+    - name: policy | update ops policy
+      ansible.builtin.command: vault write sys/policy/ops policy=@/opt/vault/policies/vault-policy-ops.hcl
+      when: ops_policy is changed
+
+    - name: policy | configure ops group
+      community.hashi_vault.vault_write:
+        path: auth/ldap/groups/ops
+        data:
+          policies: ops
+  environment:
+    VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"

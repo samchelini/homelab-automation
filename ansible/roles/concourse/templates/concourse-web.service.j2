@@ -1,0 +1,38 @@
+[Unit]
+Description=Concourse Web
+After=postgresql.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/concourse/bin/concourse web
+User=concourse
+Group=concourse
+Environment=CONCOURSE_SESSION_SIGNING_KEY=/opt/concourse/keys/session_signing_key
+Environment=CONCOURSE_TSA_HOST_KEY=/opt/concourse/keys/tsa_host_key
+Environment=CONCOURSE_TSA_AUTHORIZED_KEYS=/opt/concourse/keys/worker_key.pub
+Environment=CONCOURSE_POSTGRES_SOCKET=/var/run/postgresql
+Environment=CONCOURSE_POSTGRES_USER=concourse
+Environment=CONCOURSE_POSTGRES_DATABASE=atc
+Environment=CONCOURSE_EXTERNAL_URL=https://{{ common_name }}
+Environment=CONCOURSE_TLS_BIND_PORT=443
+Environment=CONCOURSE_TLS_CERT=/opt/concourse/tls/{{ common_name }}_fullchain.crt
+Environment=CONCOURSE_TLS_KEY=/opt/concourse/tls/{{ common_name }}.key
+Environment=CONCOURSE_LDAP_HOST=ldap.{{ domain_name }}
+Environment=CONCOURSE_LDAP_BIND_DN='cn=readonly,ou=users,{{ dc }}'
+Environment=CONCOURSE_LDAP_BIND_PW={{ readonly_password }}
+Environment=CONCOURSE_LDAP_USER_SEARCH_BASE_DN='ou=users,{{ dc }}'
+Environment=CONCOURSE_LDAP_USER_SEARCH_FILTER='(objectClass=inetOrgPerson)'
+Environment=CONCOURSE_LDAP_USER_SEARCH_USERNAME=mail
+Environment=CONCOURSE_LDAP_USER_SEARCH_ID_ATTR=uid
+Environment=CONCOURSE_LDAP_USER_SEARCH_EMAIL_ATTR=mail
+Environment=CONCOURSE_LDAP_USER_SEARCH_NAME_ATTR=uid
+Environment=CONCOURSE_LDAP_GROUP_SEARCH_BASE_DN='ou=groups,{{ dc }}'
+Environment=CONCOURSE_LDAP_GROUP_SEARCH_NAME_ATTR=cn
+Environment=CONCOURSE_LDAP_GROUP_SEARCH_USER_ATTR=DN
+Environment=CONCOURSE_LDAP_GROUP_SEARCH_GROUP_ATTR=member
+Environment=CONCOURSE_LDAP_GROUP_SEARCH_FILTER='(objectClass=groupOfNames)'
+Environment=CONCOURSE_MAIN_TEAM_LDAP_GROUP=ops
+
+[Install]
+WantedBy=multi-user.target

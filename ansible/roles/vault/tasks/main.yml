@@ -146,18 +146,41 @@
       register: ops_policy
       become: true
 
+    - name: policy | copy concourse policy
+      ansible.builtin.copy:
+        src: vault-policy-concourse.hcl
+        dest: /opt/vault/policies/
+        owner: vault
+        group: vault
+      register: concourse_policy
+      become: true
+
     - name: policy | create ops policy
       ansible.builtin.command: vault policy write ops /opt/vault/policies/vault-policy-ops.hcl
       when: '"ops" not in vault_policies.data.policies'
 
+    - name: policy | create concourse policy
+      ansible.builtin.command: vault policy write ops /opt/vault/policies/vault-policy-concourse.hcl
+      when: '"concourse" not in vault_policies.data.policies'
+
     - name: policy | update ops policy
       ansible.builtin.command: vault write sys/policy/ops policy=@/opt/vault/policies/vault-policy-ops.hcl
       when: ops_policy is changed
+
+    - name: policy | update concourse policy
+      ansible.builtin.command: vault write sys/policy/concourse policy=@/opt/vault/policies/vault-policy-concourse.hcl
+      when: concourse_policy is changed
 
     - name: policy | configure ops group
       community.hashi_vault.vault_write:
         path: auth/ldap/groups/ops
         data:
           policies: ops
+
+    - name: policy | configure concourse group
+      community.hashi_vault.vault_write:
+        path: auth/ldap/groups/concourse
+        data:
+          policies: concourse
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"

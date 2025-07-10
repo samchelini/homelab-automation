@@ -1,0 +1,152 @@
+- name: install postgresql and utilities
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - postgresql
+      - python3-psycopg2
+      - acl
+    state: latest
+  become: true
+
+- name: start postgres
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: started
+  become: true
+
+- name: create concourse db user
+  community.postgresql.postgresql_user:
+    name: concourse
+  become: true
+  become_user: postgres
+
+- name: create concourse db
+  community.postgresql.postgresql_db:
+    name: atc
+    owner: concourse
+  become: true
+  become_user: postgres
+
+- name: create concourse system user
+  ansible.builtin.user:
+    name: concourse
+    system: true
+    create_home: false
+    home: /nonexistent
+    shell: /usr/sbin/nologin
+  become: true
+
+- name: create concourse keys directory
+  ansible.builtin.file:
+    path: /opt/concourse/keys
+    owner: concourse
+    group: concourse
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: create concourse tls directory
+  ansible.builtin.file:
+    path: /opt/concourse/tls
+    owner: concourse
+    group: concourse
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: import letsencrypt role
+  ansible.builtin.import_role:
+    name: letsencrypt
+
+- name: check for concourse binary
+  ansible.builtin.stat:
+    path: /usr/local/concourse/bin/concourse
+  register: concourse_binary
+
+- name: get concourse version
+  ansible.builtin.command: /usr/local/concourse/bin/concourse --version
+  register: concourse_version
+  changed_when: false
+  when: concourse_binary.stat.exists
+
+- name: install concourse
+  block:
+    - name: concourse | get latest release url
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/concourse/concourse/releases/latest
+      register: concourse_release
+
+    - name: concourse | install
+      ansible.builtin.unarchive:
+        src: "{{ concourse_release.json.assets | community.general.json_query(qry) }}"
+        remote_src: true
+        dest: /usr/local
+        mode: '755'
+      vars:
+        qry: "[?starts_with(name, 'concourse') && ends_with(name, 'linux-amd64.tgz')].browser_download_url | [0]"
+      become: true
+      register: concourse
+      when: (concourse_version.stdout | default(omit)) not in concourse_release.json.name
+
+- name: set cap_net_bind_service on concourse binary
+  community.general.capabilities:
+    path: /usr/local/concourse/bin/concourse
+    capability: cap_net_bind_service+ep
+    state: present
+  become: true
+  when: concourse is changed
+
+- name: generate keys
+  block:
+    - name: generate keys | session_signing_key
+      community.crypto.openssl_privatekey:
+        path: /opt/concourse/keys/session_signing_key
+        owner: concourse
+        group: concourse
+      register: session_signing_key
+
+    - name: generate keys | tsa_host_key
+      community.crypto.openssh_keypair:
+        path: /opt/concourse/keys/tsa_host_key
+        backend: cryptography
+        private_key_format: pkcs1
+        owner: concourse
+        group: concourse
+      register: tsa_host_key
+
+    - name: generate keys | worker_key
+      community.crypto.openssh_keypair:
+        path: /opt/concourse/keys/worker_key
+        backend: cryptography
+        private_key_format: pkcs1
+        owner: concourse
+        group: concourse
+      register: worker_key
+  become: true
+
+- name: install concourse service file
+  ansible.builtin.template:
+    src: concourse-web.service.j2
+    dest: /etc/systemd/system/concourse-web.service
+  register: concourse_web_service
+  become: true
+
+- name: systemctl daemon-reload
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+  when: concourse_web_service is changed
+
+- name: restart concourse web
+  ansible.builtin.systemd_service:
+    name: concourse-web.service
+    state: restarted
+    enabled: true
+  become: true
+  when: >
+    concourse is changed or
+    session_signing_key is changed or
+    tsa_host_key is changed or
+    worker_key is changed or
+    concourse_web_service is changed or
+    acme_challenge is changed

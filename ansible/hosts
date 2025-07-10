@@ -49,5 +49,6 @@ debian:
     citadel:
     authelia:
     vault:
+    concourse:
   vars:
     ansible_python_interpreter: /usr/bin/python3

@@ -1,0 +1,17 @@
+[Unit]
+Description=Concourse Worker
+After=concourse-web.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/concourse/bin/concourse worker
+User=root
+Group=concourse
+Environment=CONCOURSE_WORK_DIR=/opt/concourse/worker
+Environment=CONCOURSE_TSA_HOST=127.0.0.1:2222
+Environment=CONCOURSE_TSA_PUBLIC_KEY=/opt/concourse/keys/tsa_host_key.pub
+Environment=CONCOURSE_TSA_WORKER_PRIVATE_KEY=/opt/concourse/keys/worker_key
+
+[Install]
+WantedBy=multi-user.target

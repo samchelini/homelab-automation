@@ -54,6 +54,15 @@
     mode: '0755'
   become: true
 
+- name: create concourse worker directory
+  ansible.builtin.file:
+    path: /opt/concourse/worker
+    owner: concourse
+    group: concourse
+    state: directory
+    mode: '0755'
+  become: true
+
 - name: import letsencrypt role
   ansible.builtin.import_role:
     name: letsencrypt
@@ -124,20 +133,29 @@
       register: worker_key
   become: true
 
-- name: install concourse service file
+- name: install concourse-web service file
   ansible.builtin.template:
     src: concourse-web.service.j2
     dest: /etc/systemd/system/concourse-web.service
   register: concourse_web_service
   become: true
 
+- name: install concourse-worker service file
+  ansible.builtin.template:
+    src: concourse-worker.service.j2
+    dest: /etc/systemd/system/concourse-worker.service
+  register: concourse_worker_service
+  become: true
+
 - name: systemctl daemon-reload
   ansible.builtin.systemd_service:
     daemon_reload: true
   become: true
-  when: concourse_web_service is changed
+  when: >
+    concourse_web_service is changed or
+    concourse_worker_service is changed
 
-- name: restart concourse web
+- name: restart concourse-web
   ansible.builtin.systemd_service:
     name: concourse-web.service
     state: restarted
@@ -150,3 +168,15 @@
     worker_key is changed or
     concourse_web_service is changed or
     acme_challenge is changed
+
+- name: restart concourse-worker
+  ansible.builtin.systemd_service:
+    name: concourse-worker.service
+    state: restarted
+    enabled: true
+  become: true
+  when: >
+    concourse is changed or
+    tsa_host_key is changed or
+    worker_key is changed or
+    concourse_worker_service is changed

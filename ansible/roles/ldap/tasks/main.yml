@@ -151,20 +151,6 @@
       userPassword: "{SSHA}M3044THc2hT0wq8d+UwiSNqU7u29wCU3"
   become: true
 
-- name: create concourse user
-  community.general.ldap_entry:
-    dn: uid=concourse,ou=users,{{ dc }}
-    objectClass:
-      - iNetOrgPerson
-    attributes:
-      description: concourse service account
-      cn: concourse
-      sn: service account
-      o: homelab
-      mail: "concourse@{{ domain_name }}"
-      userPassword: "{SSHA}cfKl1RLAzggdItmRXiJ9vLWTYDU2GWsi"
-  become: true
-
 - name: create groups ou
   community.general.ldap_entry:
     dn: ou=groups,{{ dc }}
@@ -179,14 +165,6 @@
     objectClass: groupOfNames
     attributes:
       member: uid=sysadmin,ou=users,{{ dc }}
-  become: true
-
-- name: create concourse group
-  community.general.ldap_entry:
-    dn: cn=concourse,ou=groups,{{ dc }}
-    objectClass: groupOfNames
-    attributes:
-      member: uid=concourse,ou=users,{{ dc }}
   become: true
 
 - name: install and configure phpldapadmin

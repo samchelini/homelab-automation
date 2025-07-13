@@ -137,6 +137,8 @@
   ansible.builtin.template:
     src: concourse-web.service.j2
     dest: /etc/systemd/system/concourse-web.service
+  vars:
+    approle_creds: "{{ lookup('ansible.builtin.file', 'approle-creds.json') | from_json }}"
   register: concourse_web_service
   become: true
 

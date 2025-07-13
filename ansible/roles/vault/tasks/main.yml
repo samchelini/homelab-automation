@@ -91,18 +91,22 @@
         vault_status.stdout | from_json | json_query("sealed")
   when: vault_status.stdout | from_json | json_query("sealed")
 
-- name: ldap
+- name: auth
   block:
-    - name: ldap | get vault auth list
+    - name: auth | get auth list
       ansible.builtin.command: vault auth list
       changed_when: false
       register: vault_auth
 
-    - name: ldap | enable
+    - name: auth | enable ldap
       ansible.builtin.command: vault auth enable ldap
       when: '"ldap/" not in vault_auth.stdout | from_json | list'
 
-    - name: ldap | configure
+    - name: auth | enable approle
+      ansible.builtin.command: vault auth enable approle
+      when: '"approle/" not in vault_auth.stdout | from_json | list'
+
+    - name: auth | configure ldap
       community.hashi_vault.vault_write:
         path: auth/ldap/config
         data:
@@ -113,9 +117,38 @@
           userattr: mail
           userfilter: (&(objectClass=inetOrgPerson)(mail={{ '{{' }}.Username{{ '}}' }}))
           groupdn: ou=groups,{{ dc }}
-      when: '"ldap/" not in vault_auth.stdout | from_json | list'
+
+    - name: auth | configure concourse approle
+      community.hashi_vault.vault_write:
+        path: auth/approle/role/concourse
+        data:
+          policies: concourse
+          period: 1h
+
+    - name: auth | get concourse role-id
+      community.hashi_vault.vault_read:
+        path: auth/approle/role/concourse/role-id
+      register: concourse_role_id
+
+    - name: auth | get concourse secret-id
+      community.hashi_vault.vault_write:
+        path: auth/approle/role/concourse/secret-id
+      register: concourse_secret_id
   environment:
     VAULT_TOKEN: "{{ lookup('ansible.builtin.file', 'vault-keys.json') | from_json | json_query('root_token') }}"
+
+- name: store concourse approle credentials
+  ansible.builtin.copy:
+    content: '{{ approle_creds | to_json }}'
+    dest: '{{ inventory_dir }}/roles/concourse/files/approle-creds.json'
+    owner: ansible
+    group: ansible
+    mode: "600"
+  vars:
+    approle_creds:
+      role_id: "{{ concourse_role_id.data.data.role_id }}"
+      secret_id: "{{ concourse_secret_id.data.data.secret_id }}"
+  delegate_to: localhost
 
 - name: secrets
   block:
@@ -160,7 +193,7 @@
       when: '"ops" not in vault_policies.data.policies'
 
     - name: policy | create concourse policy
-      ansible.builtin.command: vault policy write ops /opt/vault/policies/vault-policy-concourse.hcl
+      ansible.builtin.command: vault policy write concourse /opt/vault/policies/vault-policy-concourse.hcl
       when: '"concourse" not in vault_policies.data.policies'
 
     - name: policy | update ops policy

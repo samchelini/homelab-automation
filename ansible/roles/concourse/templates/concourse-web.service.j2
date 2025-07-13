@@ -33,6 +33,10 @@ Environment=CONCOURSE_LDAP_GROUP_SEARCH_USER_ATTR=DN
 Environment=CONCOURSE_LDAP_GROUP_SEARCH_GROUP_ATTR=member
 Environment=CONCOURSE_LDAP_GROUP_SEARCH_FILTER='(objectClass=groupOfNames)'
 Environment=CONCOURSE_MAIN_TEAM_LDAP_GROUP=ops
+Environment=CONCOURSE_VAULT_URL=https://vault.{{ domain_name }}:8200
+Environment=CONCOURSE_VAULT_PATH_PREFIX=/secrets/ops/concourse
+Environment=CONCOURSE_VAULT_AUTH_BACKEND="approle"
+Environment=CONCOURSE_VAULT_AUTH_PARAM="role_id:{{ approle_creds.role_id }},secret_id:{{ approle_creds.secret_id }}"
 
 [Install]
 WantedBy=multi-user.target

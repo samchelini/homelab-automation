@@ -3,3 +3,4 @@
 .packer_vars
 .venv
 vault-keys.json
+approle-creds.json

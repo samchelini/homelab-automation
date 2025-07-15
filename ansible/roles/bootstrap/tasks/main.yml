@@ -81,6 +81,21 @@
 - name: gather facts
   ansible.builtin.gather_facts:
 
+- name: add hashicorp repo
+  block:
+    - name: hashicorp | install keyring
+      ansible.builtin.get_url:
+        url: https://apt.releases.hashicorp.com/gpg
+        dest: /usr/share/keyrings/hashicorp-archive-keyring.asc
+        force: true
+
+    - name: hashicorp | add repo
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        state: present
+  become: true
+
+
 - name: install required packages
   ansible.builtin.package:
     name:
@@ -91,6 +106,8 @@
       - curl
       - man-db
       - jq
+      - packer
+      - terraform
     state: present
   become: true
 

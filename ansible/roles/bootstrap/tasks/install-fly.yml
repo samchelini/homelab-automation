@@ -1,0 +1,16 @@
+- name: install fly
+  block:
+    - name: fly | get latest concourse release url
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/concourse/concourse/releases/latest
+      register: concourse_release
+
+    - name: fly | install
+      ansible.builtin.unarchive:
+        src: "{{ concourse_release.json.assets | community.general.json_query(qry) }}"
+        remote_src: true
+        dest: /usr/local/bin
+        mode: '755'
+      vars:
+        qry: "[?starts_with(name, 'fly') && ends_with(name, 'linux-amd64.tgz')].browser_download_url | [0]"
+      become: true

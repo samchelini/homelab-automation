@@ -111,7 +111,7 @@
     state: present
   become: true
 
-#- include_tasks: install-genesis.yml
+- include_tasks: install-fly.yml
 
 - name: clone this repo to ansible vm
   ansible.builtin.git:

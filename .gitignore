@@ -5,3 +5,4 @@
 *vault-keys*.json
 approle-creds.json
 oci_key.pem
+.terraform*

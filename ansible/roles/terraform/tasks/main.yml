@@ -1,0 +1,30 @@
+- name: deploy {{ project_path | basename }}
+  community.general.terraform:
+    project_path: '{{ project_path }}'
+    force_init: true
+    backend_config:
+      bucket: "{{ oci_bucket }}"
+      namespace: "{{ oci_namespace }}"
+      tenancy_ocid: "{{ oci_tenancy }}"
+      user_ocid: "{{ oci_user_ocid }}"
+      fingerprint: "{{ oci_fingerprint }}"
+      private_key_path: "{{ oci_private_key_path }}"
+      region: "{{ oci_region }}"
+      key: "{{ tfstate_key }}"
+      workspace_key_prefix: "envs/"
+      auth: "APIKey"
+  environment:
+    TF_VAR_vsphere_user: "{{ vsphere_username }}"
+    TF_VAR_vsphere_password: "{{ vsphere_password }}"
+    TF_VAR_vsphere_server: "{{ vsphere_server }}"
+    TF_VAR_resource_pool_name: "{{ resource_pool_name }}"
+    TF_VAR_template_name: "{{ template_name }}"
+    TF_VAR_network_name: "{{ network_name }}"
+    TF_VAR_cluster_name: "{{ vsphere_compute_cluster }}"
+    TF_VAR_datacenter_name: "{{ vsphere_datacenter }}"
+    TF_VAR_datastore_cluster_name: "{{ vsphere_datastore }}"
+    TF_VAR_folder_name: "{{ folder_name }}"
+    TF_VAR_guest_id: "{{ guest_id }}"
+    TF_VAR_vm_domain: "{{ vm_domain }}"
+    TF_VAR_ansible_public_ssh_key: "{{ ansible_public_ssh_key }}"
+    TF_VAR_role_path: "{{ role_path }}"

@@ -1,0 +1,38 @@
+---
+- hosts: localhost
+  roles:
+    - role:  terraform
+      vars:
+        project_path: "{{ role_path }}/projects/dns"
+        tfstate_key: dns.tfstate
+        resource_pool_name: infra
+        network_name: infra
+
+    - role:  terraform
+      vars:
+        project_path: "{{ role_path }}/projects/ldap"
+        tfstate_key: ldap.tfstate
+        resource_pool_name: infra
+        network_name: infra
+
+    - role:  terraform
+      vars:
+        project_path: "{{ role_path }}/projects/vault"
+        tfstate_key: vault.tfstate
+        resource_pool_name: ops
+        network_name: ops
+
+    - role:  terraform
+      vars:
+        project_path: "{{ role_path }}/projects/concourse"
+        tfstate_key: concourse.tfstate
+        resource_pool_name: ops
+        network_name: ops
+  vars:
+    vm_domain: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          30353131613738346562363637376332663965643730376366306233646533306135316535633961
+          6461313265346661326637326232366664336262303062300a336133633561613735336333333931
+          36323033616363636137323434636133633461306161333237656464653465623632356165333361
+          3566633364376236390a396637396138333135386366366131356134653363306535323061303836
+          61633532613433653334613462316531393763333466313064363039656630343332

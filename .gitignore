@@ -2,5 +2,6 @@
 *ed25519*
 .packer_vars
 .venv
-vault-keys.json
+*vault-keys*.json
 approle-creds.json
+oci_key.pem

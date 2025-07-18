@@ -135,6 +135,7 @@
       - PyVmomi<9.0
       - passlib
       - jmespath
+      - netaddr
     extra_args: --upgrade
 
 - name: configure .bashrc

@@ -1,7 +1,11 @@
 ui = true
+cluster_addr = "https://127.0.0.1:8201"
+api_addr = "https://vault.{{ domain_name }}:8200"
+disable_mlock = true
 
-storage "file" {
+storage "raft" {
   path = "/opt/vault/data"
+  node_id = "raft_node_1"
 }
 
 listener "tcp" {

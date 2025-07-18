@@ -155,8 +155,6 @@
   community.general.ldap_entry:
     dn: ou=groups,{{ dc }}
     objectClass: organizationalUnit
-    attributes:
-      member: uid=sysadmin,ou=users,{{ dc }}
   become: true
 
 - name: create ops group

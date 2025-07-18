@@ -25,7 +25,6 @@
   become: true
   when: inventory_hostname == "ns1"
 
-
 - name: install ns2 named.conf.local from template
   ansible.builtin.template:
     src: "ns2.named.conf.local.j2"

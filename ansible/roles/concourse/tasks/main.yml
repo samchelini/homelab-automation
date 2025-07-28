@@ -1,3 +1,21 @@
+- name: update grub cmdline to fix concourse containers
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    search_string: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet systemd.unified_cgroup_hierarchy=0"'
+  register: grub_cmdline
+  become: true
+
+- name: regenerate grub config
+  ansible.builtin.command: update-grub
+  when: grub_cmdline is changed
+  become: true
+
+- name: reboot
+  ansible.builtin.reboot:
+  when: grub_cmdline is changed
+  become: true
+
 - name: install postgresql and utilities
   ansible.builtin.apt:
     update_cache: true

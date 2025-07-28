@@ -47,7 +47,6 @@ debian:
     ldap:
   hosts:
     citadel:
-    authelia:
     vault:
     concourse:
   vars:

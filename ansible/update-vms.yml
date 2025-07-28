@@ -1,0 +1,7 @@
+---
+- hosts: debian
+  tasks:
+    - name: safe upgrade
+      ansible.builtin.apt:
+        upgrade: safe
+      become: true

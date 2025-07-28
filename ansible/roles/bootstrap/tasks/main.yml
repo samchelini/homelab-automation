@@ -146,6 +146,7 @@
     block: |
       export ANSIBLE_INVENTORY={{ ansible_env.HOME }}/homelab-automation/ansible/hosts
       export ANSIBLE_VAULT_PASSWORD_FILE={{ ansible_env.HOME }}/homelab-automation/ansible/vault-password-file
+      export ANSIBLE_PRIVATE_KEY_FILE={{ ansible_env.HOME }}/.ssh/ansible_ed25519
       export PATH=$PATH:{{ ansible_env.HOME }}/.genesis
       export GIT_AUTHOR_NAME="Samuel Chelini"
       export GIT_AUTHOR_EMAIL='samchelini@gmail.com'

@@ -1,0 +1,29 @@
+resource_types:
+- name: ansible-playbook
+  type: docker-image
+  source:
+    repository: troykinsella/concourse-ansible-playbook-resource
+    tag: latest
+
+resources:
+- name: homelab-automation
+  type: git
+  source:
+    uri: https://github.com/samchelini/homelab-automation.git
+    branch: main
+- name: ansible
+  type: ansible-playbook
+  source:
+    user: ansible
+    ssh_private_key: ((ansible.private_key))
+    vault_password: ((ansible.vault_password))
+
+jobs:
+- name: update-vms
+  plan:
+  - get: homelab-automation
+  - put: ansible
+    params:
+      inventory: hosts
+      playbook: update-vms.yml
+      path: homelab-automation/ansible

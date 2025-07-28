@@ -1,0 +1,28 @@
+jobs:
+- name: run-tests
+  plan:
+  - task: run-image-test
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source: {repository: alpine}
+      run:
+        path: echo
+        args:
+          - '-n'
+          - 'Hello, world!'
+
+  - task: vault-variable-test
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source: {repository: alpine}
+      run:
+        path: echo
+        args:
+          - '-ne'
+          - 'team var: ((team-test-var.data))'
+          - '\npipeline var: ((pipeline-test-var.data))'
+          - '\nshared var: ((shared-test-var.data))'

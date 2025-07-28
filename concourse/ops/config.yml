@@ -1,0 +1,4 @@
+roles:
+- name: owner
+  ldap:
+    groups: ["ops"]

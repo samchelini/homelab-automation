@@ -6,6 +6,16 @@ resource_types:
     tag: latest
 
 resources:
+- name: manual-trigger
+  type: time
+  source:
+    interval: 1m
+- name: daily-trigger
+  type: time
+  source:
+    start: 1:00 AM
+    stop: 2:00 AM
+    location: America/New_York
 - name: homelab-automation
   type: git
   source:
@@ -19,8 +29,17 @@ resources:
     vault_password: ((ansible.vault_password))
 
 jobs:
+- name: manual-trigger
+  plan:
+  - put: manual-trigger
 - name: update-vms
   plan:
+  - get: manual-trigger
+    trigger: true
+    passed:
+      - manual-trigger
+  - get: daily-trigger
+    trigger: true
   - get: homelab-automation
   - put: ansible
     params:

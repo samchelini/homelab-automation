@@ -80,6 +80,44 @@ locals {
       etcd_key                  = var.etcd_key
     }
   }
+  capi-worker-1 = {
+    num_cpus     = 4
+    memory_mb    = 8192
+    disk_size_gb = 16
+    metadata = {
+      vm_name            = "capi-worker-1"
+      internal_domain    = var.vm_domain
+      vm_cidr            = "10.0.50.64/24"
+      vm_gateway         = "10.0.50.1"
+      vm_dns             = ["10.0.20.5", "10.0.20.6"]
+      trustdinfo_token   = var.trustdinfo_token
+      os_crt             = var.os_crt
+      talos_cluster_name = var.talos_cluster_name
+      cluster_id         = var.cluster_id
+      cluster_secret     = var.cluster_secret
+      bootstrap_token    = var.bootstrap_token
+      k8s_crt            = var.k8s_crt
+    }
+  }
+  capi-worker-2 = {
+    num_cpus     = 4
+    memory_mb    = 8192
+    disk_size_gb = 16
+    metadata = {
+      vm_name            = "capi-worker-2"
+      internal_domain    = var.vm_domain
+      vm_cidr            = "10.0.50.65/24"
+      vm_gateway         = "10.0.50.1"
+      vm_dns             = ["10.0.20.5", "10.0.20.6"]
+      trustdinfo_token   = var.trustdinfo_token
+      os_crt             = var.os_crt
+      talos_cluster_name = var.talos_cluster_name
+      cluster_id         = var.cluster_id
+      cluster_secret     = var.cluster_secret
+      bootstrap_token    = var.bootstrap_token
+      k8s_crt            = var.k8s_crt
+    }
+  }
 }
 
 provider "vsphere" {
@@ -263,5 +301,85 @@ resource "vsphere_virtual_machine" "capi-control-3" {
   }
   extra_config = {
     "guestinfo.talos.config" = base64encode(templatefile("../talos/controlplane.yaml.tftpl", local.capi-control-3.metadata))
+  }
+}
+
+resource "vsphere_virtual_machine" "capi-worker-1" {
+  name             = local.capi-worker-1.metadata.vm_name
+  datacenter_id    = data.vsphere_datacenter.datacenter.id
+  host_system_id   = resource.random_shuffle.host.result[0]
+  datastore_id     = data.vsphere_datastore.datastore.id
+  folder           = var.folder_name
+  resource_pool_id = data.vsphere_resource_pool.resource_pool.id
+  num_cpus         = local.capi-worker-1.num_cpus
+  memory           = local.capi-worker-1.memory_mb
+  guest_id         = data.vsphere_ovf_vm_template.talos.guest_id
+  scsi_type        = data.vsphere_ovf_vm_template.talos.scsi_type
+
+  dynamic "network_interface" {
+    for_each = data.vsphere_ovf_vm_template.talos.ovf_network_map
+    content {
+      network_id = network_interface.value
+    }
+  }
+
+  disk {
+    label          = "Hard Disk 1"
+    size           = local.capi-worker-1.disk_size_gb
+    io_share_count = 1000
+  }
+  enable_disk_uuid = true
+
+  wait_for_guest_net_timeout = 0
+  wait_for_guest_ip_timeout  = 10
+
+  ovf_deploy {
+    allow_unverified_ssl_cert = false
+    remote_ovf_url            = data.vsphere_ovf_vm_template.talos.remote_ovf_url
+    disk_provisioning         = data.vsphere_ovf_vm_template.talos.disk_provisioning
+    ovf_network_map           = data.vsphere_ovf_vm_template.talos.ovf_network_map
+  }
+  extra_config = {
+    "guestinfo.talos.config" = base64encode(templatefile("../talos/worker.yaml.tftpl", local.capi-worker-1.metadata))
+  }
+}
+
+resource "vsphere_virtual_machine" "capi-worker-2" {
+  name             = local.capi-worker-2.metadata.vm_name
+  datacenter_id    = data.vsphere_datacenter.datacenter.id
+  host_system_id   = resource.random_shuffle.host.result[0]
+  datastore_id     = data.vsphere_datastore.datastore.id
+  folder           = var.folder_name
+  resource_pool_id = data.vsphere_resource_pool.resource_pool.id
+  num_cpus         = local.capi-worker-2.num_cpus
+  memory           = local.capi-worker-2.memory_mb
+  guest_id         = data.vsphere_ovf_vm_template.talos.guest_id
+  scsi_type        = data.vsphere_ovf_vm_template.talos.scsi_type
+
+  dynamic "network_interface" {
+    for_each = data.vsphere_ovf_vm_template.talos.ovf_network_map
+    content {
+      network_id = network_interface.value
+    }
+  }
+
+  disk {
+    label          = "Hard Disk 1"
+    size           = local.capi-worker-2.disk_size_gb
+    io_share_count = 1000
+  }
+  enable_disk_uuid = true
+
+  wait_for_guest_net_timeout = 0
+  wait_for_guest_ip_timeout  = 10
+
+  ovf_deploy {
+    allow_unverified_ssl_cert = false
+    remote_ovf_url            = data.vsphere_ovf_vm_template.talos.remote_ovf_url
+    disk_provisioning         = data.vsphere_ovf_vm_template.talos.disk_provisioning
+    ovf_network_map           = data.vsphere_ovf_vm_template.talos.ovf_network_map
+  }
+  extra_config = {
+    "guestinfo.talos.config" = base64encode(templatefile("../talos/worker.yaml.tftpl", local.capi-worker-2.metadata))
   }
 }

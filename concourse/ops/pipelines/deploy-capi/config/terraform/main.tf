@@ -172,7 +172,7 @@ resource "vsphere_virtual_machine" "capi-control-1" {
   }
   enable_disk_uuid = true
 
-  wait_for_guest_net_timeout = 10
+  wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 10
 
   ovf_deploy {
@@ -212,7 +212,7 @@ resource "vsphere_virtual_machine" "capi-control-2" {
   }
   enable_disk_uuid = true
 
-  wait_for_guest_net_timeout = 10
+  wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 10
 
   ovf_deploy {
@@ -252,7 +252,7 @@ resource "vsphere_virtual_machine" "capi-control-3" {
   }
   enable_disk_uuid = true
 
-  wait_for_guest_net_timeout = 10
+  wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 10
 
   ovf_deploy {

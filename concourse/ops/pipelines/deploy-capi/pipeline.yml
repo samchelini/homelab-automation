@@ -1,0 +1,105 @@
+resource_types:
+- name: terraform
+  type: docker-image
+  source:
+    repository: ljfranklin/terraform-resource
+    tag: rc
+
+resources:
+  - name: terraform
+    type: terraform
+    check_every: never
+    source:
+      backend_type: oci
+      backend_config:
+        bucket: ((terraform.oci_bucket))
+        namespace: ((terraform.oci_namespace))
+        tenancy_ocid: ((terraform.oci_tenancy_ocid))
+        user_ocid: ((terraform.oci_user_ocid))
+        fingerprint: ((terraform.oci_fingerprint))
+        private_key_path: "key.pem"
+        region: ((terraform.oci_region))
+        key: "capi.tfstate"
+        workspace_key_prefix: "talos/"
+        auth: "APIKey"
+      env:
+        TF_VAR_vsphere_user: ((terraform.vsphere_user))
+        TF_VAR_vsphere_password: ((terraform.vsphere_password))
+        TF_VAR_vsphere_server: ((terraform.vsphere_server))
+        #TF_LOG: "debug"
+        #OCI_GO_SDK_DEBUG: "1"
+
+  - name: homelab-automation
+    type: git
+    source:
+      uri: https://github.com/samchelini/homelab-automation.git
+      branch: main
+
+jobs:
+- name: update-infrastructure
+  plan:
+  - get: homelab-automation
+  - task: get-oci-private-key
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: alpine
+          tag: latest
+      inputs:
+      - name: homelab-automation
+      outputs:
+      - name: homelab-automation
+      run:
+        path: sh
+        args:
+        - -c
+        - echo "((terraform.oci_private_key))" > homelab-automation/concourse/ops/pipelines/deploy-capi/config/terraform/key.pem
+  - task: set-oci-private-key-permissions
+    config:
+      inputs:
+      - name: homelab-automation
+      outputs:
+      - name: homelab-automation
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: alpine
+          tag: latest
+      run:
+        path: sh
+        args:
+        - -c
+        - chmod 600 homelab-automation/concourse/ops/pipelines/deploy-capi/config/terraform/key.pem
+  - put: terraform
+    no_get: true
+    inputs:
+    - homelab-automation
+    params:
+      env_name: capi
+      terraform_source: homelab-automation/concourse/ops/pipelines/deploy-capi/config/terraform
+      vars:
+        datacenter_name: ((terraform.vsphere_datacenter_name))
+        datastore_cluster_name: ((terraform.vsphere_datastore_cluster_name))
+        cluster_name: ((terraform.vsphere_cluster_name))
+        resource_pool_name: ((terraform.vsphere_resource_pool_name))
+        network_name: ((terraform.vsphere_network_name))
+        folder_name: ((terraform.vsphere_folder_name))
+        vm_domain: ((talos.internal_domain))
+        trustdinfo_token: ((talos.trustdinfo_token))
+        os_crt: ((talos.os_crt))
+        os_key: ((talos.os_key))
+        talos_cluster_name: ((talos.cluster_name))
+        cluster_id: ((talos.cluster_id))
+        cluster_secret: ((talos.cluster_secret))
+        bootstrap_token: ((talos.bootstrap_token))
+        secretboxencryptionsecret: ((talos.secretboxencryptionsecret))
+        k8s_crt: ((talos.k8s_crt))
+        k8s_key: ((talos.k8s_key))
+        k8saggregator_crt: ((talos.k8saggregator_crt))
+        k8saggregator_key: ((talos.k8saggregator_key))
+        k8sserviceaccount_key: ((talos.k8sserviceaccount_key))
+        etcd_crt: ((talos.etcd_crt))
+        etcd_key: ((talos.etcd_key))

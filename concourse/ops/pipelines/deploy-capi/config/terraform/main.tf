@@ -166,8 +166,9 @@ resource "vsphere_virtual_machine" "capi-control-1" {
   }
 
   disk {
-    label = "Hard Disk 1"
-    size  = local.capi-control-1.disk_size_gb
+    label          = "Hard Disk 1"
+    size           = local.capi-control-1.disk_size_gb
+    io_share_count = 1000
   }
   enable_disk_uuid = true
 
@@ -205,8 +206,9 @@ resource "vsphere_virtual_machine" "capi-control-2" {
   }
 
   disk {
-    label = "Hard Disk 1"
-    size  = local.capi-control-2.disk_size_gb
+    label          = "Hard Disk 1"
+    size           = local.capi-control-2.disk_size_gb
+    io_share_count = 1000
   }
   enable_disk_uuid = true
 
@@ -244,8 +246,9 @@ resource "vsphere_virtual_machine" "capi-control-3" {
   }
 
   disk {
-    label = "Hard Disk 1"
-    size  = local.capi-control-3.disk_size_gb
+    label          = "Hard Disk 1"
+    size           = local.capi-control-3.disk_size_gb
+    io_share_count = 1000
   }
   enable_disk_uuid = true
 

@@ -423,7 +423,7 @@ cluster:
     secret: ${cluster_secret} # Shared secret of cluster (base64 encoded random 32 bytes).
     # Provides control plane specific configuration options.
     controlPlane:
-        endpoint: https://${cluster_name}.${internal_domain}:6443 # Endpoint is the canonical controlplane endpoint, which can be an IP address or a DNS hostname.
+        endpoint: https://capi.${internal_domain}:6443 # Endpoint is the canonical controlplane endpoint, which can be an IP address or a DNS hostname.
     clusterName: ${talos_cluster_name} # Configures the cluster's name.
     # Provides cluster specific network configuration options.
     network:

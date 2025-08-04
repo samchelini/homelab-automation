@@ -151,7 +151,7 @@ resource "vsphere_virtual_machine" "capi-control-1" {
   datacenter_id    = data.vsphere_datacenter.datacenter.id
   host_system_id   = resource.random_shuffle.host.result[0]
   datastore_id     = data.vsphere_datastore.datastore.id
-  folder           = "/${var.datacenter_name}/vm/${var.folder_name}"
+  folder           = var.folder_name
   resource_pool_id = data.vsphere_resource_pool.resource_pool.id
   num_cpus         = local.capi-control-1.num_cpus
   memory           = local.capi-control-1.memory_mb
@@ -169,6 +169,7 @@ resource "vsphere_virtual_machine" "capi-control-1" {
     label = "Hard Disk 1"
     size  = local.capi-control-1.disk_size_gb
   }
+  enable_disk_uuid = true
 
   wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 0
@@ -181,7 +182,6 @@ resource "vsphere_virtual_machine" "capi-control-1" {
   }
   extra_config = {
     "guestinfo.talos.config" = base64encode(templatefile("../talos/controlplane.yaml.tftpl", local.capi-control-1.metadata))
-    "disk.enableUUID"        = "1"
   }
 }
 
@@ -190,7 +190,7 @@ resource "vsphere_virtual_machine" "capi-control-2" {
   datacenter_id    = data.vsphere_datacenter.datacenter.id
   host_system_id   = resource.random_shuffle.host.result[0]
   datastore_id     = data.vsphere_datastore.datastore.id
-  folder           = "/${var.datacenter_name}/vm/${var.folder_name}"
+  folder           = var.folder_name
   resource_pool_id = data.vsphere_resource_pool.resource_pool.id
   num_cpus         = local.capi-control-2.num_cpus
   memory           = local.capi-control-2.memory_mb
@@ -208,6 +208,7 @@ resource "vsphere_virtual_machine" "capi-control-2" {
     label = "Hard Disk 1"
     size  = local.capi-control-2.disk_size_gb
   }
+  enable_disk_uuid = true
 
   wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 0
@@ -220,7 +221,6 @@ resource "vsphere_virtual_machine" "capi-control-2" {
   }
   extra_config = {
     "guestinfo.talos.config" = base64encode(templatefile("../talos/controlplane.yaml.tftpl", local.capi-control-2.metadata))
-    "disk.enableUUID"        = "1"
   }
 }
 
@@ -229,7 +229,7 @@ resource "vsphere_virtual_machine" "capi-control-3" {
   datacenter_id    = data.vsphere_datacenter.datacenter.id
   host_system_id   = resource.random_shuffle.host.result[0]
   datastore_id     = data.vsphere_datastore.datastore.id
-  folder           = "/${var.datacenter_name}/vm/${var.folder_name}"
+  folder           = var.folder_name
   resource_pool_id = data.vsphere_resource_pool.resource_pool.id
   num_cpus         = local.capi-control-3.num_cpus
   memory           = local.capi-control-3.memory_mb
@@ -247,6 +247,7 @@ resource "vsphere_virtual_machine" "capi-control-3" {
     label = "Hard Disk 1"
     size  = local.capi-control-3.disk_size_gb
   }
+  enable_disk_uuid = true
 
   wait_for_guest_net_timeout = 0
   wait_for_guest_ip_timeout  = 0
@@ -259,6 +260,5 @@ resource "vsphere_virtual_machine" "capi-control-3" {
   }
   extra_config = {
     "guestinfo.talos.config" = base64encode(templatefile("../talos/controlplane.yaml.tftpl", local.capi-control-3.metadata))
-    "disk.enableUUID"        = "1"
   }
 }

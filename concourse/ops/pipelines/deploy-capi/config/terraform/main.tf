@@ -138,6 +138,7 @@ data "vsphere_datastore_cluster" "datastore_cluster" {
 
 resource "random_shuffle" "datastore" {
   input        = data.vsphere_datastore_cluster.datastore_cluster.datastores
+  result_count = 1
 }
 
 data "vsphere_datastore" "datastore" {

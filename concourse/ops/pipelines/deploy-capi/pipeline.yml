@@ -36,7 +36,7 @@ resources:
       branch: main
 
 jobs:
-- name: update-infrastructure
+- name: create-talos-vms
   plan:
   - get: homelab-automation
   - task: get-oci-private-key

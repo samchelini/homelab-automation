@@ -1,14 +1,17 @@
 terraform {
-  required_version = ">= 1.12.0"
-  backend "oci" {
-    bucket               = ""
-    namespace            = ""
-    tenancy_ocid         = ""
-    user_ocid            = ""
-    fingerprint          = ""
-    private_key_path     = ""
-    region               = ""
-    key                  = ""
-    workspace_key_prefix = "envs/"
+  backend "s3" {
+    access_key                  = ""
+    secret_key                  = ""
+    bucket                      = ""
+    region                      = ""
+    key                         = ""
+    use_lockfile                = true
+    skip_region_validation      = true
+    skip_credentials_validation = true
+    skip_requesting_account_id  = true
+    use_path_style              = true
+    skip_s3_checksum            = true
+    skip_metadata_api_check     = true
+    endpoints                   = {}
   }
 }

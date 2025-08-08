@@ -3,78 +3,45 @@ resource_types:
   type: docker-image
   source:
     repository: ljfranklin/terraform-resource
-    tag: rc
+    tag: latest
 
 resources:
   - name: terraform
     type: terraform
-    check_every: never
     source:
-      backend_type: oci
+      backend_type: s3
       backend_config:
+        access_key: ((terraform.s3_access_key))
+        secret_key: ((terraform.s3_secret_key))
         bucket: ((terraform.oci_bucket))
-        namespace: ((terraform.oci_namespace))
-        tenancy_ocid: ((terraform.oci_tenancy_ocid))
-        user_ocid: ((terraform.oci_user_ocid))
-        fingerprint: ((terraform.oci_fingerprint))
-        private_key_path: "key.pem"
         region: ((terraform.oci_region))
-        key: "capi.tfstate"
-        workspace_key_prefix: "talos/"
-        auth: "APIKey"
+        skip_region_validation: true
+        skip_credentials_validation: true
+        skip_requesting_account_id: true
+        use_path_style: true
+        skip_s3_checksum: true
+        skip_metadata_api_check: true
+        key: capi.tfstate
+        workspace_key_prefix: terraform
+        endpoints:
+          s3: https://((terraform.oci_namespace)).compat.objectstorage.((terraform.oci_region)).oraclecloud.com
       env:
         TF_VAR_vsphere_user: ((terraform.vsphere_user))
         TF_VAR_vsphere_password: ((terraform.vsphere_password))
         TF_VAR_vsphere_server: ((terraform.vsphere_server))
         #TF_LOG: "debug"
-        #OCI_GO_SDK_DEBUG: "1"
 
   - name: homelab-automation
     type: git
     source:
       uri: https://github.com/samchelini/homelab-automation.git
-      branch: main
+      branch: test
 
 jobs:
 - name: create-talos-vms
   plan:
   - get: homelab-automation
-  - task: get-oci-private-key
-    config:
-      platform: linux
-      image_resource:
-        type: registry-image
-        source:
-          repository: alpine
-          tag: latest
-      inputs:
-      - name: homelab-automation
-      outputs:
-      - name: homelab-automation
-      run:
-        path: sh
-        args:
-        - -c
-        - echo "((terraform.oci_private_key))" > homelab-automation/concourse/ops/pipelines/deploy-capi/config/terraform/key.pem
-  - task: set-oci-private-key-permissions
-    config:
-      inputs:
-      - name: homelab-automation
-      outputs:
-      - name: homelab-automation
-      platform: linux
-      image_resource:
-        type: registry-image
-        source:
-          repository: alpine
-          tag: latest
-      run:
-        path: sh
-        args:
-        - -c
-        - chmod 600 homelab-automation/concourse/ops/pipelines/deploy-capi/config/terraform/key.pem
   - put: terraform
-    no_get: true
     inputs:
     - homelab-automation
     params:
@@ -103,3 +70,33 @@ jobs:
         k8sserviceaccount_key: ((talos.k8sserviceaccount_key))
         etcd_crt: ((talos.etcd_crt))
         etcd_key: ((talos.etcd_key))
+  - task: get-talosconfig
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: alpine
+          tag: latest
+      outputs:
+      - name: talos
+      run:
+        path: sh
+        args:
+        - -c
+        - echo "((talos.talosconfig))" > talos/talosconfig
+  - task: run-talosctl-bootstrap
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: schelini/talosctl
+          tag: v1.10.5
+      inputs:
+      - name: talos
+      run:
+        path: /talosctl
+        args:
+        - --talosconfig talos/talosconfig
+        - version

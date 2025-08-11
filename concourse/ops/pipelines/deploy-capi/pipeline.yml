@@ -70,6 +70,13 @@ jobs:
         k8sserviceaccount_key: ((talos.k8sserviceaccount_key))
         etcd_crt: ((talos.etcd_crt))
         etcd_key: ((talos.etcd_key))
+
+- name: bootstrap-talos
+  plan:
+  - get: terraform
+    passed: [create-talos-vms]
+    trigger: true
+
   - task: get-talosconfig
     config:
       platform: linux
@@ -85,6 +92,7 @@ jobs:
         args:
         - -c
         - echo "((talos.talosconfig))" > talos/talosconfig
+
   - task: run-talosctl-bootstrap
     config:
       platform: linux
@@ -96,7 +104,42 @@ jobs:
       inputs:
       - name: talos
       run:
-        path: /talosctl
+        path: /bin/sh
         args:
-        - --talosconfig talos/talosconfig
-        - version
+        - -cex
+        - |
+          export TALOSCONFIG=talos/talosconfig
+          BOOTSTRAPPED=$(talosctl get service --output json | jq -r 'select(.metadata.id=="etcd") | .metadata.id' | wc -l)
+          if [ "${BOOTSTRAPPED}" -eq 0 ]; then
+            BOOTSTRAP_NODE=$(talosctl config info --output json | jq -r .nodes[0])
+            talosctl bootstrap --nodes ${BOOTSTRAP_NODE}
+          fi
+
+  - task: wait-until-ready
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: schelini/talosctl
+          tag: v1.10.5
+      inputs:
+      - name: talos
+      run:
+        path: /bin/sh
+        args:
+        - -cex
+        - |
+          export TALOSCONFIG=talos/talosconfig
+          MACHINESTATUS=$(talosctl get machinestatus --output json | jq -r '.spec | select(.stage == "booting" or .status.ready == false)')
+          i=0
+          while [ $i -ne 600 ]
+          do
+            if [ -z "${MACHINESTATUS}" ]; then
+              exit 0
+            fi
+            MACHINESTATUS=$(talosctl get machinestatus --output json | jq -r '.spec | select(.stage == "booting" or .status.ready == false)')
+            i=$(($i+1))
+            sleep 1
+          done
+          exit 1

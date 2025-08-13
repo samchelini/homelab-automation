@@ -411,6 +411,8 @@ machine:
 
     # # Configures the node taints for the machine. Effect is optional.
 
+    nodeTaints:
+      ciliumTaint: node.cilium.io/agent-not-ready=true:NoExecute
     # # node taints example.
     # nodeTaints:
     #     exampleTaint: exampleTaintValue:NoSchedule

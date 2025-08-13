@@ -5,6 +5,11 @@ resource_types:
     repository: ljfranklin/terraform-resource
     tag: latest
 
+- name: helm
+  type: docker-image
+  source:
+    repository: ghcr.io/typositoire/concourse-helm3-resource
+
 resources:
   - name: terraform
     type: terraform
@@ -36,6 +41,14 @@ resources:
     source:
       uri: https://github.com/samchelini/homelab-automation.git
       branch: main
+
+  - name: cilium
+    type: helm
+    check_every: never
+    source:
+      repos:
+        - name: cilium
+          url: https://helm.cilium.io/
 
 jobs:
 - name: create-talos-vms
@@ -114,6 +127,84 @@ jobs:
             BOOTSTRAP_NODE=$(talosctl config info --output json | jq -r .nodes[0])
             talosctl bootstrap --nodes ${BOOTSTRAP_NODE}
           fi
+
+  - task: wait-until-running
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: schelini/talosctl
+          tag: v1.10.5
+      inputs:
+      - name: talos
+      run:
+        path: /bin/sh
+        args:
+        - -cex
+        - |
+          export TALOSCONFIG=talos/talosconfig
+          MACHINESTATUS=$(talosctl get machinestatus --output json | jq -r '.spec | select(.stage == "booting")')
+          i=0
+          while [ $i -ne 600 ]
+          do
+            if [ -z "${MACHINESTATUS}" ]; then
+              exit 0
+            fi
+            MACHINESTATUS=$(talosctl get machinestatus --output json | jq -r '.spec | select(.stage == "booting")')
+            i=$(($i+1))
+            sleep 1
+          done
+          exit 1
+
+  - task: get-kubeconfig
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: schelini/talosctl
+          tag: v1.10.5
+      inputs:
+      - name: talos
+      outputs:
+      - name: kubeconfig
+      run:
+        path: /bin/sh
+        args:
+        - -cex
+        - |
+          export TALOSCONFIG=talos/talosconfig
+          BOOTSTRAP_NODE=$(talosctl config info --output json | jq -r .nodes[0])
+          talosctl kubeconfig --nodes=${BOOTSTRAP_NODE} kubeconfig
+
+  - put: cilium
+    inputs:
+    - kubeconfig
+    params:
+      release: cilium
+      chart: cilium/cilium
+      version: 1.18.0
+      namespace: kube-system
+      kubeconfig_path: kubeconfig/kubeconfig
+      check_is_ready: true
+      override_values:
+      - key: ipam.mode
+        value: kubernetes
+      - key: kubeProxyReplacement
+        value: true
+      - key: securityContext.capabilities.ciliumAgent
+        value: "{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}"
+      - key: securityContext.capabilities.cleanCiliumState
+        value: "{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}"
+      - key: cgroup.autoMount.enabled
+        value: "false"
+      - key: cgroup.hostRoot
+        value: /sys/fs/cgroup
+      - key: k8sServiceHost
+        value: localhost
+      - key: k8sServicePort
+        value: 7445
 
   - task: wait-until-ready
     config:

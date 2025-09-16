@@ -142,6 +142,7 @@
       - passlib
       - jmespath
       - netaddr
+      - distlib
     extra_args: --upgrade
 
 - name: configure .bashrc
@@ -215,3 +216,8 @@
   community.general.ansible_galaxy_install:
     type: role
     name: lvps.389ds_server
+
+- name: install kubespray collection
+  community.general.ansible_galaxy_install:
+    type: collection
+    requirements_file: '{{ role_path }}/files/requirements.yml'

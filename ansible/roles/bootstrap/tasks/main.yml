@@ -113,10 +113,16 @@
 
 - include_tasks: install-fly.yml
 
-- name: clone this repo to ansible vm
+- name: check if homelab-automation repo exists
+  ansible.builtin.stat:
+    path: '{{ ansible_env.HOME }}/homelab-automation'
+  register: homelab_automation_repo
+
+- name: clone homelab-automation repo
   ansible.builtin.git:
     repo: https://github.com/samchelini/homelab-automation.git
     dest: "{{ ansible_env.HOME }}/homelab-automation"
+  when: not homelab_automation_repo.stat.exists
 
 - name: configure path
   ansible.builtin.lineinfile:

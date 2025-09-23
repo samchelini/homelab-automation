@@ -137,12 +137,25 @@
     name:
       - pip
       - ansible
+      - ansible-core
       - requests
       - PyVmomi<9.0
       - passlib
       - jmespath
       - netaddr
       - distlib
+    extra_args: --upgrade
+
+- name: create kubespray venv and install pip packages
+  ansible.builtin.pip:
+    virtualenv: "{{ ansible_env.HOME }}/homelab-automation/ansible/.kubespray_venv"
+    virtualenv_command: "virtualenv --prompt kubespray-venv"
+    name:
+      - pip
+      - ansible-core~=2.16.0
+      - ansible
+      - netaddr
+      - jmespath
     extra_args: --upgrade
 
 - name: configure .bashrc

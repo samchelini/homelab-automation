@@ -1,0 +1,11 @@
+---
+- name: install kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
+
+- name: configure cluster
+  hosts: all
+  tasks:
+  - name: install open-iscsi (for longhorn)
+    ansible.builtin.apt:
+      name: open-iscsi
+      state: latest

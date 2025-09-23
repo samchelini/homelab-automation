@@ -10,6 +10,13 @@
 
     - role:  terraform
       vars:
+        project_path: "{{ role_path }}/projects/ops-k8s"
+        tfstate_key: ops-k8s.tfstate
+        resource_pool_name: "superservers/Resources/ops/k8s"
+        network_name: ops
+
+    - role:  terraform
+      vars:
         project_path: "{{ role_path }}/projects/ldap"
         tfstate_key: ldap.tfstate
         resource_pool_name: infra

@@ -71,5 +71,6 @@ if [ -z "${PKR_VAR_vm_dns}" ]; then
   read -p "  vm dns (space separated): " PKR_VAR_vm_dns
 fi
 
-packer validate ${BASH_SOURCE%/*}/packer/debian
-packer build -force ${BASH_SOURCE%/*}/packer/debian
+packer init ${BASH_SOURCE%/*}/packer/debian/13
+packer validate ${BASH_SOURCE%/*}/packer/debian/13
+packer build -force ${BASH_SOURCE%/*}/packer/debian/13

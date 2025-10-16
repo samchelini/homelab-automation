@@ -77,9 +77,31 @@
     state: "powered-on"
     wait_for_ip_address: true
   delegate_to: localhost
+  register: power_on
+
+- name: wait 30 seconds
+  ansible.builtin.pause:
+    seconds: 30
+  when: power_on is changed
 
 - name: gather facts
   ansible.builtin.gather_facts:
+
+- name: install required packages
+  ansible.builtin.package:
+    name:
+      - git
+      - python3-virtualenv
+      - vim
+      - wget
+      - curl
+      - man-db
+      - jq
+      - gpg
+      - python3-packaging
+      - tmux
+    state: present
+  become: true
 
 - name: add hashicorp repo
   block:
@@ -93,23 +115,16 @@
       ansible.builtin.apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
         state: present
+
+    - name: install packer and terraform
+      ansible.builtin.package:
+        name:
+          - packer
+          - terraform
+        state: present
   become: true
 
 
-- name: install required packages
-  ansible.builtin.package:
-    name:
-      - git
-      - python3-virtualenv
-      - vim
-      - wget
-      - curl
-      - man-db
-      - jq
-      - packer
-      - terraform
-    state: present
-  become: true
 
 - include_tasks: install-fly.yml
 
@@ -233,4 +248,4 @@
 - name: install kubespray collection
   community.general.ansible_galaxy_install:
     type: collection
-    requirements_file: '{{ role_path }}/files/requirements.yml'
+    requirements_file: '{{ ansible_env.HOME }}/homelab-automation/ansible/roles/bootstrap/files/requirements.yml'

@@ -10,7 +10,6 @@ if [ ! -f ${password_file} ]; then
   echo "${ansible_vault_password}" > ${password_file}
 fi
 
-ansible-playbook \
-  --vault-password-file ${password_file} \
-  --inventory-file ${BASH_SOURCE%/*}/ansible/hosts \
-  ${BASH_SOURCE%/*}/ansible/bootstrap.yml
+export ANSIBLE_INVENTORY=${BASH_SOURCE%/*}/ansible/hosts
+export ANSIBLE_VAULT_PASSWORD_FILE=${password_file}
+ansible-playbook ${BASH_SOURCE%/*}/ansible/bootstrap.yml

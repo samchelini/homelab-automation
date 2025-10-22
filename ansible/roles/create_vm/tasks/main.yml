@@ -5,6 +5,7 @@
     password: '{{ vcenter_password }}'
     validate_certs: false
     datacenter: '{{ vcenter_datacenter }}'
+    datastore: '{{ vcenter_datastore }}'
     cluster: '{{ vcenter_cluster }}'
     resource_pool: '{{ vcenter_resource_pool | default(omit) }}'
     folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
@@ -13,10 +14,12 @@
     disk:
     - size_gb: '{{ vm_disk_gb }}'
       type: thin
-      autoselect_datastore: true
     hardware:
       memory_mb: '{{ vm_memory_mb }}'
       num_cpus: '{{ vm_cpu_num }}'
+    advanced_settings:
+      - key: "disk.EnableUUID"
+        value: '{{ disk_enable_uuid | default(omit) }}'
   delegate_to: localhost
   register: vm_info
 

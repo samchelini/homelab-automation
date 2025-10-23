@@ -1,0 +1,19 @@
+- name: install helm
+  block:
+    - name: helm | get keyring
+      ansible.builtin.get_url:
+        url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+        dest: /usr/share/keyrings/helm.gpg
+        force: true
+
+    - name: helm | add repo
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
+        state: present
+
+    - name: helm | install
+      ansible.builtin.apt:
+        update_cache: true
+        name: helm
+        state: latest
+  become: true

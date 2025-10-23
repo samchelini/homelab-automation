@@ -127,6 +127,8 @@
 
 
 - include_tasks: install-fly.yml
+- include_tasks: install-helm.yml
+- include_tasks: install-kubectl.yml
 
 - name: check if homelab-automation repo exists
   ansible.builtin.stat:
@@ -167,10 +169,12 @@
     virtualenv_command: "virtualenv --prompt kubespray-venv"
     name:
       - pip
-      - ansible-core~=2.16.0
+      - ansible-core<2.18.0
       - ansible
       - netaddr
       - jmespath
+      - requests
+      - PyVmomi<9.0
     extra_args: --upgrade
 
 - name: configure .bashrc
@@ -181,10 +185,13 @@
     block: |
       export ANSIBLE_INVENTORY={{ ansible_env.HOME }}/homelab-automation/ansible/hosts
       export ANSIBLE_VAULT_PASSWORD_FILE={{ ansible_env.HOME }}/homelab-automation/ansible/vault-password-file
+      export ANSIBLE_ROLES_PATH={{ ansible_env.HOME }}/homelab-automation/ansible/roles
       export ANSIBLE_PRIVATE_KEY_FILE={{ ansible_env.HOME }}/.ssh/ansible_ed25519
       export PATH=$PATH:{{ ansible_env.HOME }}/.genesis
       export GIT_AUTHOR_NAME="Samuel Chelini"
       export GIT_AUTHOR_EMAIL='samchelini@gmail.com'
+      export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}"
+      export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
       export GIT_EDITOR=vim
       source {{ ansible_env.HOME }}/homelab-automation/ansible/.venv/bin/activate
       alias ls='ls -lah --color=auto'
@@ -249,3 +256,4 @@
   community.general.ansible_galaxy_install:
     type: collection
     requirements_file: '{{ ansible_env.HOME }}/homelab-automation/ansible/roles/bootstrap/files/requirements.yml'
+  changed_when: false

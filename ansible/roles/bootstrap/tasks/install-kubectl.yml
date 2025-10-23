@@ -1,0 +1,19 @@
+- name: install kubectl
+  block:
+    - name: kubectl | get keyring
+      ansible.builtin.get_url:
+        url: 'https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key'
+        dest: /usr/share/keyrings/kubernetes-apt-keyring.gpg
+        force: true
+
+    - name: kubectl | add repo
+      ansible.builtin.apt_repository:
+        repo: 'deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /'
+        state: present
+
+    - name: kubectl | install
+      ansible.builtin.apt:
+        update_cache: true
+        name: kubectl
+        state: latest
+  become: true

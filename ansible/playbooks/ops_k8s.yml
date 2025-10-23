@@ -99,11 +99,6 @@
 - hosts: ops_k8s
   roles:
     - extend-lvm
-  tasks:
-  - name: install required packages
-    ansible.builtin.package:
-      name:
-        - python3-kubernetes
 
 - name: install kubernetes
   ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
@@ -170,6 +165,7 @@
       kind: ConfigMap
       namespace: kube-system
       name: kube-proxy
+    become: false
     register: kube_proxy_config
 
   - name: enable strictARP on kube-proxy for metallb
@@ -182,6 +178,7 @@
       definition:
         data:
           config.conf: '{{ kube_proxy_config.resources[0].data["config.conf"] | replace("strictARP: false", "strictARP: true")}}'
+    become: false
 
   - name: install metallb
     kubernetes.core.helm:
@@ -191,6 +188,7 @@
       chart_repo_url: https://metallb.github.io/metallb
       create_namespace: true
       wait: true
+    become: false
 
   - name: apply metallb address pool
     kubernetes.core.k8s:
@@ -205,6 +203,15 @@
           - '{{ ingress_nginx_address }}'
           autoAssign: true
       apply: yes
+    become: false
+    vars:
+      ingress_nginx_address: !vault |
+                $ANSIBLE_VAULT;1.1;AES256
+                30336632356533336339333136363463373933316239656563383336326535353562313436653030
+                3333333066636666636631303863303263666338396437390a303864663935336461343865336663
+                61363463353563626362396463353733666566356132646265353261393035353233613131386362
+                3364336463373461390a616332623930353963313930323566343962646662333366353662313463
+                3366
 
   - name: apply metallb l2 advertisement
     kubernetes.core.k8s:
@@ -218,6 +225,7 @@
           ipAddressPools:
           - default
       apply: yes
+    become: false
 
   - name: install ingress-nginx
     kubernetes.core.helm:
@@ -231,6 +239,7 @@
         controller:
           service:
             type: LoadBalancer
+    become: false
 
   - name: apply ops-k8s-storageclass storageclass
     kubernetes.core.k8s:
@@ -246,3 +255,4 @@
           storagepolicyname: "ops-k8s-storageclass"
           fstype: ext4
       apply: yes
+    become: false

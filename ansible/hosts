@@ -1,8 +1,16 @@
 all:
   vars:
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=60s'
     ansible_user: ansible
     ansible_public_ssh_key: "{{ lookup('ansible.builtin.file', '{{ inventory_dir }}/roles/bootstrap/files/ansible_ed25519.pub') }}"
+    ansible_python_interpreter: /usr/bin/python3
+    ops_domain: !vault |
+                $ANSIBLE_VAULT;1.1;AES256
+                32346438663133663937626530363562666434326230386633636664363564326631373839303166
+                3439303961323437313361333636396230366363613234660a303265356531636137656334356363
+                32383238353339306330613539316261363834376635393466376235396138303634376266363734
+                6338346161643731630a623161633737316266393265333166653532666530353765323666353266
+                3262
 
 ungrouped:
   hosts:
@@ -22,6 +30,35 @@ ungrouped:
 ldap:
   hosts:
     ds1:
+
+kube_control_plane:
+  hosts:
+    ops-k8s-control-1:
+    ops-k8s-control-2:
+    ops-k8s-control-3:
+  vars:
+    ingress_nginx_address: !vault |
+              $ANSIBLE_VAULT;1.1;AES256
+              30336632356533336339333136363463373933316239656563383336326535353562313436653030
+              3333333066636666636631303863303263666338396437390a303864663935336461343865336663
+              61363463353563626362396463353733666566356132646265353261393035353233613131386362
+              3364336463373461390a616332623930353963313930323566343962646662333366353662313463
+              3366
+
+kube_node:
+  hosts:
+    ops-k8s-worker-1:
+    ops-k8s-worker-2:
+    ops-k8s-worker-3:
+
+etcd:
+  children:
+    kube_control_plane:
+
+ops_k8s:
+  children:
+    kube_control_plane:
+    kube_node:
 
 debian:
   children:

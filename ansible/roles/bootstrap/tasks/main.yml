@@ -12,15 +12,15 @@
     password: '{{ vcenter_password }}'
     validate_certs: false
     datacenter: '{{ vcenter_datacenter }}'
+    datastore: '{{ vcenter_datastore }}'
     cluster: '{{ vcenter_cluster }}'
     resource_pool: '{{ vcenter_resource_pool }}'
     folder: '/{{ vcenter_datacenter }}/vm/ansible_vms'
     name: '{{ vm_name }}'
     template: '{{ vm_template }}'
     disk:
-    - size_gb: 32
+    - size_gb: 150
       type: thin
-      autoselect_datastore: true
     hardware:
       memory_mb: 2048
       num_cpus: 2

@@ -175,6 +175,7 @@
       - jmespath
       - requests
       - PyVmomi<9.0
+      - kubernetes
     extra_args: --upgrade
 
 - name: configure .bashrc

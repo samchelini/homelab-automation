@@ -17,3 +17,16 @@
         name: helm
         state: latest
   become: true
+
+- name: install and update helm-diff plugin
+  block:
+    - name: helm-diff | install
+      kubernetes.core.helm_plugin:
+        plugin_path: https://github.com/databus23/helm-diff
+        state: present
+
+    - name: helm-diff | update
+      kubernetes.core.helm_plugin:
+        plugin_name: diff
+        state: latest
+      changed_when: false

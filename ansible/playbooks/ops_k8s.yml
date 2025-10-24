@@ -241,6 +241,133 @@
             type: LoadBalancer
     become: false
 
+  - name: install cert-manager
+    kubernetes.core.helm:
+      release_name: cert-manager
+      release_namespace: cert-manager
+      chart_ref: "oci://quay.io/jetstack/charts/cert-manager"
+      create_namespace: true
+      wait: true
+      set_values:
+        - value: crds.enabled=true
+    become: false
+
+  - name: install porkbun-webhook
+    block:
+      - name: porkbun-webhook | get latest release url
+        ansible.builtin.uri:
+          url: https://api.github.com/repos/mdonoughe/porkbun-webhook/releases/latest
+        register: porkbun_webhook_release
+
+      - name: porkbun-webhook | install
+        kubernetes.core.helm:
+          release_name: porkbun-webhook
+          release_namespace: cert-manager
+          #chart_ref: porkbun-webhook
+          chart_ref: '{{ porkbun_webhook_release.json.assets | community.general.json_query(qry) }}'
+          #chart_repo_url: '{{ porkbun_webhook_release }}'
+          wait: true
+          set_values:
+            - value: groupName="porkbun-webhook"
+        vars:
+          qry: "[?starts_with(name, 'porkbun-webhook') && ends_with(name, '.tgz')].browser_download_url | [0]"
+
+      - name: porkbun-webhook | create secret
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: v1
+            kind: Secret
+            type: Opaque
+            metadata:
+              name: porkbun-key
+              namespace: cert-manager
+            data:
+              api-key: '{{ porkbun_api_key | b64encode }}'
+              secret-key: '{{ porkbun_secret_key | b64encode }}'
+        vars:
+          porkbun_api_key: !vault |
+                    $ANSIBLE_VAULT;1.1;AES256
+                    34663864376130336331393366383237656237393535623962313464396363623330643337393264
+                    3937656434383262343661386236383062373733613334350a646133646136363765346263646333
+                    33666235333566633163643437353239633738653632636430623633626362393533343439643831
+                    3461373434366263310a306265356135313137393765636566356435323164653138353566376335
+                    30323732373766343335663838326434386536383561663031343435326133323065623638326566
+                    65613437316234326461323032346536396566656430303465373038343936646366646638306363
+                    37316134653435393930376538626134353037326666326535336534343765623764373835376134
+                    64386462363733623162
+          porkbun_secret_key: !vault |
+                    $ANSIBLE_VAULT;1.1;AES256
+                    64653932376532313162396666613332303362623831376330346465383034333537383232613862
+                    3335323538623836343833393863346137383364633631330a663561363433626464383739343332
+                    66616566353833633231653963643732613734633731323732323036376165316565646436393163
+                    3166346235316364370a303966386162646262356338363536383666343136333235613162633639
+                    39386165326533663536663437626434626430393937353465356339336566626462303865386230
+                    61353963323061346234366339343765396637613834363633383866616339646637356437313931
+                    37346538363033313339333333396137363031356438663363613561313564366234636434653764
+                    33663735353361393064
+
+      - name: porkbun-webhook | create role
+        kubernetes.core.k8s:
+          namespace: cert-manager
+          definition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: porkbun-key:reader
+            rules:
+              - apiGroups: [""]
+                resources: ["secrets"]
+                resourceNames: ["porkbun-key"]
+                verbs: ["get"]
+
+      - name: porkbun-webhook | create rolebinding
+        kubernetes.core.k8s:
+          namespace: cert-manager
+          definition:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: porkbun-webhook:key-reader
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: porkbun-key:reader
+            subjects:
+              - apiGroup: ""
+                kind: ServiceAccount
+                name: porkbun-webhook
+
+      - name: porkbun-webhook | create cluster issuer
+        kubernetes.core.k8s:
+          definition:
+            apiVersion: cert-manager.io/v1
+            kind: ClusterIssuer
+            metadata:
+              name: letsencrypt
+            spec:
+              acme:
+                server: https://acme-v02.api.letsencrypt.org/directory
+                email: '{{ my_email }}'
+                privateKeySecretRef:
+                  name: letsencrypt-key
+                solvers:
+                  - selector:
+                      dnsZones:
+                        - k8s.{{ ops_domain }}
+                    dns01:
+                      webhook:
+                        groupName: porkbun-webhook
+                        solverName: porkbun
+                        config:
+                          apiKeySecretRef:
+                            name: porkbun-key
+                            key: api-key
+                          secretKeySecretRef:
+                            name: porkbun-key
+                            key: secret-key
+    become: false
+
   - name: apply ops-k8s-storageclass storageclass
     kubernetes.core.k8s:
       definition:
@@ -275,11 +402,13 @@
         - value: server.ingress.enabled=true
         - value: server.ingress.hosts=["authentik.k8s.{{ ops_domain }}"]
           value_type: json
-        - value: 'server.ingress.annotations={"nginx.ingress.kubernetes.io/force-ssl-redirect": "true"}'
+        - value: 'server.ingress.annotations={"nginx.ingress.kubernetes.io/force-ssl-redirect": "true", "cert-manager.io/cluster-issuer": "letsencrypt"}'
           value_type: json
         - value: postgresql.enabled=true
         - value: postgresql.auth.password='{{ authentik_postgresql_password }}'
         - value: redis.enabled=true
+        - value: 'server.ingress.tls=[{"hosts": ["authentik.k8s.{{ ops_domain }}"], "secretName": "authentik-tls"}]'
+          value_type: json
     become: false
     vars:
       authentik_secret_key: !vault |

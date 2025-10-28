@@ -263,9 +263,7 @@
         kubernetes.core.helm:
           release_name: porkbun-webhook
           release_namespace: cert-manager
-          #chart_ref: porkbun-webhook
           chart_ref: '{{ porkbun_webhook_release.json.assets | community.general.json_query(qry) }}'
-          #chart_repo_url: '{{ porkbun_webhook_release }}'
           wait: true
           set_values:
             - value: groupName="porkbun-webhook"
@@ -385,30 +383,283 @@
     become: false
 
   - name: install authentik
-    kubernetes.core.helm:
-      release_name: authentik
-      release_namespace: authentik
-      chart_ref: authentik
-      chart_repo_url: https://charts.goauthentik.io
-      create_namespace: true
-      wait: true
-      set_values:
-        - value: authentik.bootstrap_password='{{ authentik_bootstrap_password }}'
-        - value: authentik.bootstrap_token='{{ authentik_bootstrap_password }}'
-        - value: authentik.secret_key='{{ authentik_secret_key }}'
-        - value: authentik.error_reporting.enabled=false
-        - value: authentik.postgresql.password='{{ authentik_postgresql_password }}'
-        - value: server.ingress.ingressClassName="nginx"
-        - value: server.ingress.enabled=true
-        - value: server.ingress.hosts=["authentik.k8s.{{ ops_domain }}"]
-          value_type: json
-        - value: 'server.ingress.annotations={"nginx.ingress.kubernetes.io/force-ssl-redirect": "true", "cert-manager.io/cluster-issuer": "letsencrypt"}'
-          value_type: json
-        - value: postgresql.enabled=true
-        - value: postgresql.auth.password='{{ authentik_postgresql_password }}'
-        - value: redis.enabled=true
-        - value: 'server.ingress.tls=[{"hosts": ["authentik.k8s.{{ ops_domain }}"], "secretName": "authentik-tls"}]'
-          value_type: json
+    block:
+      - name: authentik | install helm chart
+        kubernetes.core.helm:
+          release_name: authentik
+          release_namespace: authentik
+          chart_ref: authentik
+          chart_repo_url: https://charts.goauthentik.io
+          create_namespace: true
+          wait: true
+          set_values:
+            - value: authentik.bootstrap_password='{{ authentik_bootstrap_password }}'
+            - value: authentik.bootstrap_token='{{ authentik_bootstrap_password }}'
+            - value: authentik.secret_key='{{ authentik_secret_key }}'
+            - value: authentik.error_reporting.enabled=false
+            - value: authentik.postgresql.password='{{ authentik_postgresql_password }}'
+            - value: server.ingress.ingressClassName="nginx"
+            - value: server.ingress.enabled=true
+            - value: server.ingress.hosts=["authentik.k8s.{{ ops_domain }}"]
+              value_type: json
+            - value: 'server.ingress.annotations={"nginx.ingress.kubernetes.io/force-ssl-redirect": "true", "cert-manager.io/cluster-issuer": "letsencrypt"}'
+              value_type: json
+            - value: postgresql.enabled=true
+            - value: postgresql.auth.password='{{ authentik_postgresql_password }}'
+            - value: redis.enabled=true
+            - value: 'server.ingress.tls=[{"hosts": ["authentik.k8s.{{ ops_domain }}"], "secretName": "authentik-tls"}]'
+              value_type: json
+        register: authentik_install
+
+      - name: authentik | wait for install
+        ansible.builtin.pause:
+          seconds: 30
+        when: authentik_install is changed
+
+      - name: authentik | get ops group
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/groups/?name=ops
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: get_ops_group
+
+      - name: authentik | create ops group
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/groups/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            name: ops
+            is_superuser: true
+          status_code: 201
+          body_format: json
+        when: get_ops_group.json.pagination.count != 1
+        register: created_ops_group
+
+      - name: authentik | set ops_group var
+        ansible.builtin.set_fact:
+          ops_group_guid: '{{ get_ops_group.json.results[0].pk | default(created_ops_group.json.pk) }}'
+
+      - name: authentik | get sysadmin user
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/users/?name=sysadmin
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: get_sysadmin_user
+
+      - name: authentik | create sysadmin user
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/users/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            username: sysadmin
+            name: sysadmin
+            email: sysadmin@{{ lab_domain }}
+            is_active: true
+            groups:
+              - '{{ ops_group_guid }}'
+            type: internal
+          status_code: 201
+          body_format: json
+        when: get_sysadmin_user.json.pagination.count != 1
+        register: created_sysadmin_user
+
+      - name: authentik | set sysadmin user password
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/users/{{ created_sysadmin_user.json.pk }}/set_password/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            password: '{{ sysadmin_password }}'
+          status_code: 204
+          body_format: json
+        when: created_sysadmin_user.json is defined
+
+      - name: authentik | get authorization flow
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/flows/instances/?slug=default-provider-authorization-explicit-consent
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: authorization_flow
+
+      - name: authentik | get invalidation flow
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/flows/instances/?slug=default-provider-invalidation-flow
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: invalidation_flow
+
+      - name: authentik | get oidc certificate
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/crypto/certificatekeypairs/?name=oidc-cert
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: get_oidc_certificate
+
+      - name: authentik | create oidc certificate
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/crypto/certificatekeypairs/generate/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            common_name: oidc-cert
+            validity_days: 365
+            alg: rsa
+          status_code: 200
+          body_format: json
+        when: get_oidc_certificate.json.pagination.count != 1
+        register: created_oidc_certificate
+
+      - name: authentik | set oidc_certificate var
+        ansible.builtin.set_fact:
+          oidc_certificate: '{{ get_oidc_certificate.json.results[0].pk | default(created_oidc_certificate.json.pk) }}'
+
+      - name: authentik | get openid scope
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/propertymappings/all/?managed=goauthentik.io/providers/oauth2/scope-openid
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: openid_scope
+
+      - name: authentik | get email scope
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/propertymappings/all/?managed=goauthentik.io/providers/oauth2/scope-email
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: email_scope
+
+      - name: authentik | get email scope
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/propertymappings/all/?managed=goauthentik.io/providers/oauth2/scope-profile
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: profile_scope
+
+      - name: authentik | get concourse provider
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/providers/oauth2/?name=concourse-oauth
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: get_concourse_provider
+
+      - name: authentik | create concourse provider
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/providers/oauth2/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            name: concourse-oauth
+            authorization_flow: '{{ authorization_flow.json.results[0].pk }}'
+            invalidation_flow: '{{ invalidation_flow.json.results[0].pk }}'
+            signing_key: '{{ oidc_certificate }}'
+            property_mappings:
+              - '{{ openid_scope.json.results[0].pk }}'
+              - '{{ email_scope.json.results[0].pk }}'
+              - '{{ profile_scope.json.results[0].pk }}'
+            redirect_uris:
+              - matching_mode: strict
+                url: "https://concourse.k8s.{{ ops_domain }}/sky/issuer/callback"
+            client_type: confidential
+            client_id: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=64) }}"
+            client_secret: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=64) }}"
+          status_code: 201
+          body_format: json
+        when: get_concourse_provider.json.pagination.count != 1
+        register: created_concourse_provider
+
+      - name: authentik | set concourse_provider
+        ansible.builtin.set_fact:
+          concourse_provider: '{{ get_concourse_provider.json.results[0] | default(created_concourse_provider.json) }}'
+
+      - name: authentik | get concourse application
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/applications/?name=Concourse
+          method: GET
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          status_code: 200
+          body_format: json
+        register: get_concourse_application
+
+      - name: authentik | create concourse application
+        ansible.builtin.uri:
+          url: https://authentik.k8s.{{ ops_domain }}/api/v3/core/applications/
+          method: POST
+          headers:
+            Authorization: Bearer {{ authentik_bootstrap_password }}
+          unredirected_headers:
+            - Authorization
+          body:
+            name: Concourse
+            slug: concourse
+            provider: '{{ concourse_provider.pk }}'
+          status_code: 201
+          body_format: json
+        when: get_concourse_application.json.pagination.count != 1
+        register: created_concourse_application
     become: false
     vars:
       authentik_secret_key: !vault |
@@ -440,3 +691,40 @@
                 62373064656235666136376134636638363465396262316534343139396630643433626362633064
                 3838316166346334340a346633343936646561376638353334353233333664363434663138626430
                 66383963316236313034363463373430323935353866323136356236323162626562
+      sysadmin_password: !vault |
+                $ANSIBLE_VAULT;1.1;AES256
+                66653239636230386335393230336135633734613733663931636462393338326166613932353966
+                3366386533333733623161323738333864393366396233320a353334363533613435353934353438
+                63353632316462633338363834323235653330613363323236643866336333633332623539643664
+                3766346535613966380a306266363666656161383638666266326465346231353139393233616233
+                64636661393732376136363536313466633135303935366235333364333966643038
+
+  - name: install concourse
+    kubernetes.core.helm:
+      release_name: concourse
+      release_namespace: concourse
+      chart_ref: concourse
+      chart_repo_url: https://concourse-charts.storage.googleapis.com
+      create_namespace: true
+      wait: true
+      set_values:
+        - value: 'concourse.web.externalUrl=https://concourse.k8s.{{ ops_domain }}'
+        - value: 'concourse.web.auth.mainTeam.oidc.group=ops'
+        - value: 'concourse.web.auth.localAuth.enabled=false'
+        - value: 'concourse.web.auth.oidc.enabled=true'
+        - value: 'concourse.web.auth.oidc.displayName=Authentik'
+        - value: 'concourse.web.auth.oidc.issuer=https://authentik.k8s.{{ ops_domain }}/application/o/concourse/'
+        - value: 'concourse.web.auth.oidc.userNameKey=name'
+        - value: 'secrets.oidcClientId={{ concourse_provider.client_id }}'
+        - value: 'secrets.oidcClientSecret={{ concourse_provider.client_secret }}'
+        - value: web.ingress.enabled=true
+        - value: web.ingress.ingressClassName="nginx"
+        - value: 'web.ingress.annotations={"nginx.ingress.kubernetes.io/force-ssl-redirect": "true", "cert-manager.io/cluster-issuer": "letsencrypt"}'
+          value_type: json
+        - value: web.ingress.hosts=["concourse.k8s.{{ ops_domain }}"]
+          value_type: json
+        - value: 'web.ingress.tls=[{"hosts": ["concourse.k8s.{{ ops_domain }}"], "secretName": "concourse-tls"}]'
+          value_type: json
+        - value: postgresql.customPgData="/opt/postgresql/data"
+        - value: postgresql.dataVolumeMountPath="/opt/postgresql/data"
+    become: false

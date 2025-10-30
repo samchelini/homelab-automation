@@ -1,0 +1,3 @@
+username: ((tpcf.opsman_username))
+password: ((tpcf.opsman_password))
+decryption-passphrase: ((tpcf.opsman_decryption_passphrase))

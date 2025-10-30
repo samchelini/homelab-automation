@@ -1,0 +1,21 @@
+---
+opsman-configuration:
+  vsphere:
+    vcenter:
+      datacenter: ((tpcf.vcenter_datacenter))
+      datastore: ((tpcf.vcenter_datastore))
+      url: ((tpcf.vcenter_url))
+      username: ((tpcf.vcenter_username))
+      password: ((tpcf.vcenter_password))
+      resource_pool: ((tpcf.vcenter_resource_pool))
+      insecure: ((tpcf.vcenter_allow_unverified_ssl))
+    disk_type: thin
+    vm_name: ((tpcf.opsman_vm_name))
+    dns: ((tpcf.opsman_dns_servers))
+    gateway: ((tpcf.opsman_gateway))
+    hostname: ((tpcf.opsman_hostname))
+    netmask: ((tpcf.opsman_netmask))
+    network: ((tpcf.opsman_network))
+    ntp: ((tpcf.opsman_ntp))
+    private_ip: ((tpcf.opsman_ip))
+    ssh_public_key: ((tpcf.opsman_public_ssh_key))

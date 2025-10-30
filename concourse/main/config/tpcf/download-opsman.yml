@@ -1,0 +1,5 @@
+---
+pivnet-api-token: ((pivnet-api-token))
+pivnet-file-glob: "*vsphere*ova"
+pivnet-product-slug: ops-manager
+product-version-regex: ((tpcf.opsman-version-regex))

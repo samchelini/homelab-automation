@@ -1,0 +1,133 @@
+---
+resource_types:
+- name: pivnet
+  type: docker-image
+  source:
+    repository: pivotalcf/pivnet-resource
+    tag: latest-final
+
+resources:
+- name: platform-automation
+  type: pivnet
+  source:
+    api_token: ((pivnet-api-token))
+    product_slug: platform-automation
+
+- name: homelab-automation
+  type: git
+  source:
+    uri: https://github.com/samchelini/homelab-automation.git
+    branch: main
+
+prepare-tasks-with-secrets: &prepare-tasks-with-secrets
+  image: platform-automation-image
+  file: platform-automation-tasks/tasks/prepare-tasks-with-secrets.yml
+  input_mapping:
+    tasks: platform-automation-tasks
+    config: homelab-automation
+    vars: foundation-secrets
+  params:
+    CONFIG_PATHS: config/concourse/main/config/tpcf
+  output_mapping:
+    tasks: platform-automation-tasks
+
+jobs:
+- name: deploy-opsman
+  serial: true
+  plan:
+  - in_parallel:
+    - get: platform-automation-image
+      resource: platform-automation
+      params:
+        globs: ["vsphere-platform-automation-image-*"]
+        unpack: true
+    - get: platform-automation-tasks
+      resource: platform-automation
+      params:
+        globs: ["platform-automation-tasks-*"]
+        unpack: true
+    - get: homelab-automation
+  - task: prepare-tasks-with-secrets
+    <<: *prepare-tasks-with-secrets
+  - task: download-opsman-image
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/download-product.yml
+    input_mapping:
+      config: homelab-automation
+    params:
+      CONFIG_FILE: concourse/main/config/tpcf/download-opsman.yml
+      SOURCE: pivnet
+    output_mapping:
+      downloaded-product: opsman-image
+  - task: create-fake-state-file
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source: { repository: alpine }
+      run:
+        path: sh
+        args:
+          - -exc
+          - echo '{}' > ./homelab-automation/state.yml
+      inputs:
+        - name: homelab-automation
+      outputs:
+        - name: homelab-automation
+  - task: create-vm
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/create-vm.yml
+    input_mapping:
+      image: opsman-image
+      config: homelab-automation
+      state: homelab-automation
+    params:
+      OPSMAN_CONFIG_FILE: concourse/main/config/tpcf/opsman.yml
+      STATE_FILE: state.yml
+  - task: configure-authentication
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/configure-authentication.yml
+    attempts: 50
+    input_mapping:
+      env: homelab-automation
+      config: homelab-automation
+    params:
+      ENV_FILE: concourse/main/config/tpcf/env.yml
+      AUTH_CONFIG_FILE: concourse/main/config/tpcf/auth.yml
+
+- name: deploy-director
+  plan:
+  - in_parallel:
+    - get: platform-automation-image
+      resource: platform-automation
+      params:
+        globs: ["vsphere-platform-automation-image-*"]
+        unpack: true
+      passed: [deploy-opsman]
+      trigger: true
+    - get: platform-automation-tasks
+      resource: platform-automation
+      params:
+        globs: ["platform-automation-tasks-*"]
+        unpack: true
+      passed: [deploy-opsman]
+      trigger: true
+    - get: homelab-automation
+  - task: prepare-tasks-with-secrets
+    <<: *prepare-tasks-with-secrets
+  - task: configure-director
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/configure-director.yml
+    input_mapping:
+      config: homelab-automation
+      env: homelab-automation
+    params:
+      ENV_FILE: concourse/main/config/tpcf/env.yml
+      DIRECTOR_CONFIG_FILE: concourse/main/config/tpcf/director.yml
+  - task: apply-director-changes
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/apply-director-changes.yml
+    input_mapping:
+      env: homelab-automation
+    params:
+      ENV_FILE: concourse/main/config/tpcf/env.yml

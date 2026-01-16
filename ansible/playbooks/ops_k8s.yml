@@ -726,5 +726,5 @@
         - value: 'web.ingress.tls=[{"hosts": ["concourse.k8s.{{ ops_domain }}"], "secretName": "concourse-tls"}]'
           value_type: json
         - value: postgresql.customPgData="/opt/postgresql/data"
-        - value: postgresql.dataVolumeMountPath="/opt/postgresql/data"
+        - value: postgresql.dataVolumeMountPath="/opt/postgresql"
     become: false

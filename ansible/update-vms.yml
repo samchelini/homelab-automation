@@ -1,7 +1,34 @@
 ---
 - hosts: debian
+  serial: 1
   tasks:
     - name: safe upgrade
       ansible.builtin.apt:
         upgrade: safe
+        update_cache: true
+        autoremove: true
       become: true
+
+    - name: drain and reboot kubernetes nodes
+      block:
+        - name: drain
+          delegate_to: localhost
+          kubernetes.core.k8s_drain:
+            state: drain
+            name: '{{ inventory_hostname }}'
+            kubeconfig: /home/ansible/.kube/config
+            delete_options:
+              ignore_daemonsets: true
+              delete_emptydir_data: true
+
+        - name: reboot
+          ansible.builtin.reboot:
+
+        - name: uncordon
+          delegate_to: localhost
+          kubernetes.core.k8s_drain:
+            state: uncordon
+            name: '{{ inventory_hostname }}'
+            kubeconfig: /home/ansible/.kube/config
+      become: true
+      when: inventory_hostname != 'citadel'

@@ -103,16 +103,14 @@ jobs:
       params:
         globs: ["vsphere-platform-automation-image-*"]
         unpack: true
-      passed: [deploy-opsman]
-      trigger: true
     - get: platform-automation-tasks
       resource: platform-automation
       params:
         globs: ["platform-automation-tasks-*"]
         unpack: true
+    - get: homelab-automation
       passed: [deploy-opsman]
       trigger: true
-    - get: homelab-automation
   - task: prepare-tasks-with-secrets
     <<: *prepare-tasks-with-secrets
   - task: configure-director

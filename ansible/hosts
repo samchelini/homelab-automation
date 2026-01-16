@@ -35,10 +35,6 @@ ungrouped:
           3637
       ansible_python_interpreter: /usr/bin/python3
 
-ldap:
-  hosts:
-    ds1:
-
 kube_control_plane:
   hosts:
     ops-k8s-control-1:
@@ -62,11 +58,7 @@ ops_k8s:
 
 debian:
   children:
-    dns:
-    ldap:
+    kube_control_plane:
+    kube_node:
   hosts:
     citadel:
-    vault:
-    concourse:
-  vars:
-    ansible_python_interpreter: /usr/bin/python3

@@ -1,4 +1,6 @@
-device: /dev/sda
-partition_number: 3
+device_query: '{{ ansible_facts.devices | dict2items | json_query("[?contains(value.partitions.*.holders[], `vg-root`)].key") | first }}'
+device: '/dev/{{ device_query }}'
+partition_query: '{{ ansible_facts.devices[device_query].partitions | dict2items | json_query("[?contains(value.holders[], `vg-root`)].key") | first }}'
+partition_number: '{{ partition_query | regex_replace(device_query, "") }}'
 vg: vg
 lv: root

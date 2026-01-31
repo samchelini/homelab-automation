@@ -136,6 +136,23 @@
     external_vsphere_kubernetes_cluster_id: ops-k8s
     vsphere_csi_enabled: true
     vsphere_csi_namespace: vmware-system-csi
+    kube_proxy_strict_arp: true
+    kube_vip_enabled: true
+    kube_vip_controlplane_enabled: true
+    kube_vip_lb_enable: true
+    kube_vip_address: !vault |
+              $ANSIBLE_VAULT;1.1;AES256
+              32333431353164653533353735646339613234363531386535633661633862363530323032623333
+              3966303663343935646539316466653337646338616234300a643262303330613338653666366465
+              35613832323766636639346436623862393862353336656636643937336232656137613763396461
+              3534383737393661350a393866343836333063363032343365306465373533656665386232393234
+              3431
+    apiserver_loadbalancer_domain_name: ops-k8s-vip.{{ ops_domain }}
+    loadbalancer_apiserver:
+      address: "{{ kube_vip_address }}"
+      port: 6443
+    kube_vip_services_enabled: false
+    kube_vip_arp_enabled: true
   when: inventory_hostname in groups["ops_k8s"]
 
 - name: create .kube directory
@@ -150,7 +167,7 @@
   hosts: ops_k8s
   tasks:
   - ansible.builtin.fetch:
-      src: /etc/kubernetes/super-admin.conf
+      src: /etc/kubernetes/admin.conf
       dest: /home/ansible/.kube/config
       flat: true
     when: inventory_hostname in groups["ops_k8s"] and inventory_hostname in groups["kube_control_plane"]

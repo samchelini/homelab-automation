@@ -18,8 +18,8 @@
       - config
       - talos
       - https://{{ control_plane_vip }}:6443
+      - --config-patch={{ role_path }}/talosconfig/all-patch.yaml
       - --config-patch-control-plane={{ role_path }}/talosconfig/cp-patch.yaml
-      - --config-patch-worker={{ role_path }}/talosconfig/worker-patch.yaml
       - --with-secrets={{ role_path }}/talosconfig/secrets.yaml
       - --output={{ role_path }}/talosconfig/
       - --force

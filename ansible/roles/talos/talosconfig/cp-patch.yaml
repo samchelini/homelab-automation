@@ -2,11 +2,5 @@ machine:
   network:
     interfaces:
       - interface: ens192
-        dhcp: false
-        addresses:
-          - ${ip_addr}/${netmask}
-        routes:
-          - network: 0.0.0.0/0
-            gateway: ${default_gateway}
         vip:
           ip: ${vip}

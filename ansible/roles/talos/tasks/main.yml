@@ -1,0 +1,96 @@
+---
+- name: install talosctl
+  ansible.builtin.shell:
+    cmd: curl -sL https://talos.dev/install | sh
+  become: true
+  changed_when: false
+
+- name: generate talos secrets
+  ansible.builtin.command:
+    cmd: talosctl gen secrets --output-file {{ role_path }}/talosconfig/secrets.yaml
+    creates: "{{ role_path }}/talosconfig/secrets.yaml"
+
+- name: generate talos configs
+  ansible.builtin.command:
+    argv: 
+      - talosctl
+      - gen
+      - config
+      - talos
+      - https://{{ control_plane_vip }}:6443
+      - --config-patch-control-plane={{ role_path }}/talosconfig/cp-patch.yaml
+      - --config-patch-worker={{ role_path }}/talosconfig/worker-patch.yaml
+      - --with-secrets={{ role_path }}/talosconfig/secrets.yaml
+      - --output={{ role_path }}/talosconfig/
+      - --force
+  changed_when: false
+
+- name: deploy talos
+  community.general.terraform:
+    project_path: '{{ role_path }}/terraform'
+    force_init: true
+    complex_vars: true
+    variables:
+      vsphere_username: "{{ vsphere_username }}"
+      vsphere_password: "{{ vsphere_password }}"
+      vsphere_server: "{{ vsphere_server }}"
+      vsphere_datacenter: "{{ vsphere_datacenter }}"
+      vsphere_datastore: "{{ vsphere_datastore }}"
+      vsphere_cluster: "{{ vsphere_cluster }}"
+      vsphere_resource_pool: "{{ vsphere_resource_pool }}"
+      vsphere_network: "{{ vsphere_network }}"
+      vsphere_content_library: "{{ vsphere_content_library }}"
+      vsphere_folder: "{{ vsphere_folder }}"
+      talos_ova_url: "{{ talos_ova_url }}"
+      control_plane_vip: "{{ control_plane_vip }}"
+      node_subnet_cidr: "{{ node_subnet_cidr }}"
+      node_netmask: "{{ node_netmask }}"
+      default_gateway: "{{ default_gateway }}"
+      vm_config: "{{ vm_config }}"
+
+- name: get bootstrap node status
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - get
+      - machinestatus
+      - --output=json
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+  register: bootstrap_node_status
+  changed_when: false
+
+- name: bootstrap etcd
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - bootstrap
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+    bootstrap_stage: "{{ bootstrap_node_status.stdout | from_json | json_query('spec.stage') }}"
+    bootstrap_ready: "{{ bootstrap_node_status.stdout | from_json | json_query('spec.status.ready') }}"
+  when: bootstrap_stage == "booting" and not bootstrap_ready
+
+- name: wait for bootstrap node to be ready
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - get
+      - machinestatus
+      - --output=json
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+  register: bootstrap_node_status
+  until: bootstrap_node_status.stdout | from_json | json_query('spec.status.ready')
+  retries: 60
+  delay: 5
+  changed_when: false

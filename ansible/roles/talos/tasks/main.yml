@@ -30,6 +30,7 @@
     project_path: '{{ role_path }}/terraform'
     force_init: true
     complex_vars: true
+    parallelism: 1
     variables:
       vsphere_username: "{{ vsphere_username }}"
       vsphere_password: "{{ vsphere_password }}"

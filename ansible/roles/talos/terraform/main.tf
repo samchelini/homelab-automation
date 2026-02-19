@@ -91,6 +91,7 @@ resource "vsphere_virtual_machine" "control_plane" {
 }
 
 resource "vsphere_virtual_machine" "worker" {
+  depends_on       = [vsphere_virtual_machine.control_plane]
   count            = var.vm_config["worker"].count
   name             = "${var.vm_config["worker"].name_prefix}-${sum([count.index, 1])}"
   resource_pool_id = data.vsphere_resource_pool.resource_pool.id

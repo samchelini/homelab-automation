@@ -63,3 +63,5 @@
         num_cpus: 2
         memory_mb: 2048
         disk_gb: 16
+    kubernetes_version: 1.35.0
+    cilium_version: 1.19.0

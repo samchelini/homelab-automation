@@ -64,6 +64,20 @@
   register: bootstrap_node_status
   changed_when: false
 
+- name: get etcd members
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - get
+      - etcdmembers
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+  register: etcd_members
+  changed_when: false
+
 - name: bootstrap etcd
   ansible.builtin.command:
     argv:
@@ -75,10 +89,28 @@
   vars:
     bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
     bootstrap_stage: "{{ bootstrap_node_status.stdout | from_json | json_query('spec.stage') }}"
-    bootstrap_ready: "{{ bootstrap_node_status.stdout | from_json | json_query('spec.status.ready') }}"
-  when: bootstrap_stage == "booting" and not bootstrap_ready
+    etcd_members_count: "{{ etcd_members.stdout_lines[1:] | count }}"
+  when: bootstrap_stage == "booting" and etcd_members_count != vm_config.control_plane.count
 
-- name: wait for bootstrap node to be ready
+- name: wait for etcd members to join
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - etcd
+      - members
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+    etcd_members_count: "{{ etcd_members.stdout_lines[1:] | count }}"
+  register: etcd_members
+  until: etcd_members.stdout_lines[1:] | count == vm_config.control_plane.count
+  retries: 60
+  delay: 5
+  changed_when: false
+
+- name: wait for bootstrap node to be running
   ansible.builtin.command:
     argv:
       - talosctl
@@ -91,7 +123,62 @@
   vars:
     bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
   register: bootstrap_node_status
-  until: bootstrap_node_status.stdout | from_json | json_query('spec.status.ready')
+  until: bootstrap_node_status.stdout | from_json | json_query('spec.stage') == "running"
+  retries: 60
+  delay: 5
+  changed_when: false
+
+- name: get kubeconfig
+  ansible.builtin.command:
+    argv:
+      - talosctl
+      - --talosconfig={{ role_path }}/talosconfig/talosconfig
+      - --endpoints={{ bootstrap_node }}
+      - --nodes={{ bootstrap_node }}
+      - kubeconfig
+      - "{{ lookup('env', 'HOME') }}/.kube/config"
+  vars:
+    bootstrap_node: "{{ node_subnet_cidr | ansible.utils.ipaddr('next_usable') }}"
+  changed_when: false
+
+- name: wait for nodes
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+  register: nodes
+  until: >
+    nodes.resources is defined and
+    nodes.resources | count == vm_config.control_plane.count + vm_config.worker.count
+  retries: 60
+  delay: 5
+  changed_when: false
+
+- name: install cilium
+  kubernetes.core.helm:
+    chart_ref: oci://quay.io/cilium/charts/cilium
+    chart_version: '{{ cilium_version }}'
+    release_name: cilium
+    release_namespace: kube-system
+    set_values:
+      - value: ipam.mode=kubernetes
+      - value: kubeProxyReplacement=true
+      - value: securityContext.capabilities.ciliumAgent="{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}"
+      - value: securityContext.capabilities.cleanCiliumState="{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}"
+      - value: cgroup.autoMount.enabled=false
+      - value: cgroup.hostRoot=/sys/fs/cgroup
+      - value: k8sServiceHost=localhost
+      - value: k8sServicePort=7445
+      - value: gatewayAPI.enabled=true
+      - value: gatewayAPI.enableAlpn=true
+      - value: gatewayAPI.enableAppProtocol=true
+    wait: true
+
+- name: wait for nodes to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+  register: nodes
+  until:  nodes | json_query('resources[].status.conditions[?type==`Ready` && status==`True`]') | count == vm_config.control_plane.count + vm_config.worker.count
   retries: 60
   delay: 5
   changed_when: false

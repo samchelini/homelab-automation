@@ -8,3 +8,9 @@ machine:
         routes:
           - network: 0.0.0.0/0
             gateway: ${default_gateway}
+cluster:
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true

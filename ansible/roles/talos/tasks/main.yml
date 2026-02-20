@@ -153,6 +153,18 @@
   delay: 5
   changed_when: false
 
+- name: get latest gateway-api release
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/kubernetes-sigs/gateway-api/releases/latest
+  register: gateway_api_release
+
+- name: install gateway-api crds
+  kubernetes.core.k8s:
+    src: https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway_api_release.json.tag_name }}/standard-install.yaml
+    apply: true
+    server_side_apply:
+      field_manager: ansible
+
 - name: install cilium
   kubernetes.core.helm:
     chart_ref: oci://quay.io/cilium/charts/cilium

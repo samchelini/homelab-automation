@@ -124,7 +124,16 @@
         state: present
   become: true
 
+- name: install homebrew
+  ansible.builtin.shell:
+    cmd: NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    creates: /home/linuxbrew/.linuxbrew/bin/brew
 
+- name: add homebrew to path
+  ansible.builtin.lineinfile:
+    insertbefore: BOF
+    line: export PATH=$PATH:/home/linuxbrew/.linuxbrew/bin
+    path: "{{ ansible_env.HOME }}/.bashrc"
 
 - include_tasks: install-fly.yml
 - include_tasks: install-helm.yml

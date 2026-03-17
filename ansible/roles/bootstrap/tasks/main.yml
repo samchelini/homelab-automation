@@ -100,6 +100,7 @@
       - gpg
       - python3-packaging
       - tmux
+      - unzip
     state: present
   become: true
 

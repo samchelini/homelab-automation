@@ -129,3 +129,31 @@ jobs:
       env: homelab-automation
     params:
       ENV_FILE: concourse/main/config/tpcf/env.yml
+
+- name: deploy-ear
+  plan:
+  - in_parallel:
+    - get: platform-automation-image
+      resource: platform-automation
+      params:
+        globs: ["vsphere-platform-automation-image-*"]
+        unpack: true
+    - get: platform-automation-tasks
+      resource: platform-automation
+      params:
+        globs: ["platform-automation-tasks-*"]
+        unpack: true
+    - get: homelab-automation
+      passed: [deploy-opsman]
+      trigger: true
+  - task: prepare-tasks-with-secrets
+    <<: *prepare-tasks-with-secrets
+  - task: download-ear
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/download-and-upload-product.yml
+    input_mapping:
+      env: homelab-automation
+      config: homelab-automation
+    params:
+      ENV_FILE: concourse/main/config/tpcf/env.yml
+      CONFIG_FILE: concourse/main/config/tpcf/download-ear.yml

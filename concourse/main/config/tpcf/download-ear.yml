@@ -1,0 +1,6 @@
+---
+pivnet-product-slug: elastic-runtime
+file-glob: "cf*.pivotal"
+product-version-regex: ((tpcf.ear-version-regex))
+stemcell-iaas: vsphere
+pivnet-api-token: ((pivnet-api-token))

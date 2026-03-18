@@ -144,7 +144,7 @@ jobs:
         globs: ["platform-automation-tasks-*"]
         unpack: true
     - get: homelab-automation
-      passed: [deploy-opsman]
+      passed: [deploy-director]
       trigger: true
   - task: prepare-tasks-with-secrets
     <<: *prepare-tasks-with-secrets

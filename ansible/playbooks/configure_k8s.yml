@@ -566,6 +566,7 @@
         - value: 'concourse.web.auth.oidc.displayName=Authentik'
         - value: 'concourse.web.auth.oidc.issuer=https://authentik.k8s.{{ ops_domain }}/application/o/concourse/'
         - value: 'concourse.web.auth.oidc.userNameKey=name'
+        - value: 'persistence.worker.size=50Gi'
         - value: 'secrets.oidcClientId={{ concourse_provider.client_id }}'
         - value: 'secrets.oidcClientSecret={{ concourse_provider.client_secret }}'
         - value: web.ingress.enabled=true
